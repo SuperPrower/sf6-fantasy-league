@@ -1,7 +1,8 @@
-from sf6_fantasy_league.db.supabase_client import get_supabase_client
 import re
+from sf6_fantasy_league.db.supabase_client import get_supabase_client
+from sf6_fantasy_league.services.base_service import BaseService
 
-class UserService:
+class UserService(BaseService):
     """
     Handles user authentication and account management (i.e. signing up and 
     logging in)
@@ -49,7 +50,7 @@ class UserService:
             "user_id": user.id,
             "manager_name": manager_name,
         }
-        self.supabase.table("managers").insert(insert_data).execute()
+        self.verify_query(self.supabase.table("managers").insert(insert_data))
         return user.id
 
     def login(self, email, password):
@@ -70,7 +71,7 @@ class UserService:
 
         # verify user exists in managers table
         user_id = session.user.id
-        manager_check = self.supabase.table("managers").select("*").eq("user_id", user_id).execute()
+        manager_check = self.verify_query(self.supabase.table("managers").select("*").eq("user_id", user_id))
         if not manager_check.data:
             raise Exception("Login failed: User not found.")
 

@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 from sf6_fantasy_league.services.user_service import UserService
 from sf6_fantasy_league.services.league_service import LeagueService
-from sf6_fantasy_league.services.manager_service import ManagerService
 from tests.fixtures.users import TEST_USERS
 from supabase import create_client
 from random import shuffle, sample
@@ -64,7 +63,7 @@ def main():
         league_service = LeagueService(user["access_token"], user["user_id"])
         target_league_name = sample(league_names, 1)[0]
         # find league_id from creators
-        target_league_id = next(l["service"].get_my_manager()["league_id"] 
+        target_league_id = next(l["service"].get_my_user()["league_id"] 
                                 for l in creator_services 
                                 if l["league_name"] == target_league_name)
         try:

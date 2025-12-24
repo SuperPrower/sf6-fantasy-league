@@ -1,5 +1,4 @@
 import re
-from sf6_fantasy_league.db.supabase_client import get_supabase_client
 from sf6_fantasy_league.services.base_service import BaseService
 
 class LeagueService(BaseService):
@@ -14,9 +13,6 @@ class LeagueService(BaseService):
 
     Methods
     -------
-    get_my_manager() -> dict
-        Returns the manager row associated with the authenticated user.
-
     create_and_join_league(league_name: str) -> bool
         Creates a new league with the given name and assigns the current user to
         it.
@@ -27,20 +23,12 @@ class LeagueService(BaseService):
 
     leave_league() -> bool
         Removes the authenticated user from their current league.
+
+    set_league_lock(locked: bool) -> bool
+        Locks the league to prevent new managers joining.
     """
-    def get_my_manager(self):
-        result = (
-            self.supabase
-            .table("managers")
-            .select("*")
-            .eq("user_id", self.user_id)
-            .execute()
-        )
-
-        return result.data[0]
-
     def create_and_join_league(self, league_name: str):
-        manager = self.get_my_manager()
+        manager = self.get_my_user()
         if manager["league_id"]:
             raise Exception("User is already in a league.")
         
@@ -50,67 +38,105 @@ class LeagueService(BaseService):
             raise Exception("League name must only include letters, numbers, underscores, and spaces.")
 
         # create league
-        result = (
+        result = self.verify_query(
             self.supabase
             .table("leagues")
-            .insert({"league_name": league_name})
-            .execute()
+            .insert({
+                "league_name": league_name,
+                "league_owner": self.user_id,
+                "locked": False
+                })
             )
-
-        if not result.data:
-            raise Exception(f"Failed to create league: {result.data}")
 
         league_id = result.data[0]["league_id"]
 
-        # update manager row
-        update = (
+        self.verify_query(
             self.supabase
             .table("managers")
             .update({"league_id": league_id})
             .eq("user_id", self.user_id)
-            .execute()
             )
         
         return True
 
     def join_league(self, league_id: str):
-        manager = self.get_my_manager()
+        manager = self.get_my_user()
         if manager["league_id"]:
             raise Exception("You are already in a league.")
 
+        members = self.verify_query(
+            self.supabase
+            .table("managers")
+            .select("*")
+            .eq("league_id", league_id)
+            )
+        
+        if len(members.data) >= 5:
+            raise Exception("League is full.")
+
         # check if league exists
         try:
-            check = (
+            check = self.verify_query(
                 self.supabase
                 .table("leagues")
-                .select("*")
+                .select("league_id, locked")
                 .eq("league_id", league_id)
-                .execute()
+                .single()
                 )
         except Exception as e:
-            print("League not found.")
+            raise Exception("League not found.")
 
-        update = (
+        if check.data["locked"]:
+            raise Exception("League is currently closed for joining.")
+
+        update = self.verify_query(
             self.supabase
             .table("managers")
             .update({"league_id": league_id})
             .eq("user_id", self.user_id)
-            .execute()
             )
 
         return True
 
     def leave_league(self):
-        manager = self.get_my_manager()
+        manager = self.get_my_user()
         if not manager["league_id"]:
             raise Exception("You are not in a league.")
 
-        update = (
+        league = self.verify_query(
+            self.supabase
+            .table("leagues")
+            .select("*")
+            .eq("league_id", manager["league_id"])
+            .single()
+            )
+        
+        if league.data["locked"]:
+            raise Exception("This league has been locked.")
+
+        update = self.verify_query(
             self.supabase
             .table("managers")
             .update({"league_id": None})
             .eq("user_id", self.user_id)
-            .execute()
             )
+
+        return True
+
+    def set_league_lock(self, locked: bool):
+        manager = self.get_my_user()
+        if not manager["league_id"]:
+            raise Exception("You are not in a league.")
+
+        result = self.verify_query(
+            self.supabase
+            .table("leagues")
+            .update({"locked": locked})
+            .eq("league_id", manager["league_id"])
+            .eq("league_owner", self.user_id)
+        )
+
+        if not result.data:
+            raise Exception("Only the league owner can close or open a league.")
 
         return True

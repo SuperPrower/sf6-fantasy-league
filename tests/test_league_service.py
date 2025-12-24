@@ -30,10 +30,9 @@ def user_create_league(league_service, league_name):
     except Exception as e:
         print(f"Create/join league failed: {e}")
 
-def join_league(league_service):
-    fake_league = str(uuid4())
+def join_league(league_service, league_id):
     try:
-        league_service.join_league(fake_league)
+        league_service.join_league(league_id)
     except Exception as e:
         print(f"Expected error when joining a league: {e}")
 
@@ -43,6 +42,13 @@ def user_leave_league(league_service):
         print(f"Left league successfully.")
     except Exception as e:
         print(f"Leave league failed: {e}")
+
+def unlock_league(league_service):
+    try:
+        league_service.set_league_lock(False)
+        print("League unlocked successfuly")
+    except Exception as e:
+        print(f"League unlock failed: {e}")
 
 def delete_test_league(league_name):
     client = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
@@ -68,12 +74,11 @@ def main():
 
     if not league_service:
         return
-
+    
     user_create_league(league_service, league_name)
-    join_league(league_service)
     user_leave_league(league_service)
     delete_test_league(league_name)
-    join_league(league_service)
+    join_league(league_service, str(uuid4()))
 
 if __name__ == "__main__":
     main()

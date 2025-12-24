@@ -1,22 +1,14 @@
 
->> Systems <<
+>> TODO: Systems <<
 
 	Player Market
 		- Determining player tiers and prices
 		- Player creation
 		- Player price updator
 	
-	User Service
-		- User creation
-		- User login
-	
 	Team Service
 		- Team creation and player selection
 		- Roster change 
-	
-	League Service
-		- League creation
-		- League-User authorising
 	
 	Event Service
 		- Determining events and inserting to database
