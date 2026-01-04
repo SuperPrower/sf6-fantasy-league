@@ -27,7 +27,6 @@ def create_dummy_leagues():
         except Exception as e:
             print(f"Failed to create league '{league_name}': {e}")
 
-
 def join_dummy_leagues():
     admin_client = supabase.create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
     leagues = admin_client.table("leagues").select("*").execute().data
@@ -45,7 +44,44 @@ def join_dummy_leagues():
         except Exception as e:
             print(f"Failed to join league for user '{user['email']}': {e}")
 
+def assign_draft_orders_for_all_leagues():
+    admin_client = supabase.create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+    leagues = admin_client.table("leagues").select("*").execute()
+
+    for idx, league in enumerate(leagues.data):
+        owner_user_id = league["league_owner"]
+
+        manager_row = admin_client.table("managers") \
+            .select("manager_name, user_id") \
+            .eq("user_id", owner_user_id) \
+            .single() \
+            .execute().data
+
+        manager_name = manager_row["manager_name"]
+        owner_user = next(u for u in TEST_USERS if u["manager_name"] == manager_name)
+        email = owner_user["email"]
+        password = owner_user["password"]
+
+        sv = LeagueService(email, password)
+
+        managers_in_league = admin_client.table("managers") \
+            .select("manager_name") \
+            .eq("league_id", league["league_id"]) \
+            .execute().data
+
+        usernames = [m["manager_name"] for m in managers_in_league]
+
+        if idx == 0:
+            usernames[0] = "INVALID_USERNAME"
+
+        try:
+            sv.assign_draft_order(usernames)
+        except Exception as e:
+            print(f"Failed to assign draft order: {e}")
+            continue
+
 def main():
+    create_dummy_leagues()
     join_dummy_leagues()
 
 if __name__ == "__main__":

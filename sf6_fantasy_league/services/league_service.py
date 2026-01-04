@@ -26,6 +26,12 @@ class LeagueService(BaseService):
         Locks the league to prevent new managers joining. Can only be done by
         the league owner.
         Returns True if successful.
+
+    assign_draft_order(ordered_usernames: list[str]) -> bool
+        Assigns draft positions to all managers in the league based on the order
+        of usernames provided. Can only be done by the league owner and only
+        before the draft is locked.
+        Returns True if successful.
     """
     def create_then_join_league(self, league_name: str):
         if self.get_my_league():
@@ -137,5 +143,56 @@ class LeagueService(BaseService):
 
         if not result.data:
             raise Exception("Only the league owner can open or close a league.")
+
+        return True
+
+    def assign_draft_order(self, ordered_usernames: list[str]):
+
+        if not ordered_usernames:
+            raise Exception("Draft order list cannot be empty.")
+
+        league_id = self.get_my_league()
+
+        if not league_id:
+            raise Exception("You are not currently in a league.")
+
+        league = self.verify_query(
+            self.supabase
+            .table("leagues")
+            .select("league_owner, locked")
+            .eq("league_id", league_id)
+            .single()
+        ).data
+
+        if league["league_owner"] != self.user_id:
+            raise Exception("Only the league owner can set draft order.")
+
+        if league["locked"]:
+            raise Exception("Cannot modify draft order once the draft has begun.")
+
+        managers = self.verify_query(
+            self.supabase
+            .table("managers")
+            .select("user_id, manager_name")
+            .eq("league_id", league_id)
+        ).data
+
+        manager_map = {m["manager_name"]: m["user_id"] for m in managers}
+
+        if len(ordered_usernames) != len(managers):
+            raise Exception("Draft order list must consist of all managers in the league.")
+
+        for username in ordered_usernames:
+            if username not in manager_map:
+                raise Exception(f"Invalid username in draft list: {username}")
+
+        for i, username in enumerate(ordered_usernames, start=1):
+            user_id = manager_map[username]
+            self.verify_query(
+                self.supabase
+                .table("managers")
+                .update({"draft_order": i})
+                .eq("user_id", user_id)
+                )
 
         return True

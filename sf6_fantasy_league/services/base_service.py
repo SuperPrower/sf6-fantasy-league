@@ -40,6 +40,9 @@ class BaseService:
 
         get_my_league() -> str:
             Returns the user's league UUID.
+
+        get_my_team() -> str:
+            Returns the user's team name.
     """
     def __init__(self, email: str, password: str):
         if not email or not password:
