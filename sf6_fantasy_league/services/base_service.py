@@ -107,8 +107,8 @@ class BaseService:
         result = self.verify_query((
             self.supabase
             .table("managers")
-            .select("team_name")
+            .select("team_id")
             .eq("user_id", self.user_id)
             ))
 
-        return result.data[0]["team_name"]
+        return result.data[0]["team_id"]
