@@ -50,6 +50,14 @@ TEST_USERS = [
     {"email": "user20@gmail.com", "password": "H@9!ZP$M27F8", "manager_name": "Tina"},
 ]
 
+ALICES_TEAM = [
+    {"email": "user1@gmail.com", "password": "G!7rP2vH#9qZ", "manager_name": "Alice"},
+    {"email": "user4@gmail.com", "password": "T%3bV9nE@7rY", "manager_name": "Dana"},
+    {"email": "user5@gmail.com", "password": "F!6kH8zM$4jL", "manager_name": "Evan"},
+    {"email": "user2@gmail.com", "password": "H$8mK4sT*1xW", "manager_name": "Bobert"},
+    {"email": "user3@gmail.com", "password": "J&5yL6wR^2pQ", "manager_name": "Charlie"},
+]
+
 FALSE_USERS = [
     {"email": "user1gmail.com", "password": "G!7rP2vH#9qZ", "manager_name": "Alice"},  # invalid email
     {"email": "user2@gmail.com", "password": "short", "manager_name": "Bobert"},        # password too short

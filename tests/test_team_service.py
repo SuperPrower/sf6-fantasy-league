@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from dotenv import load_dotenv
 import supabase
-from .fixtures import TEST_USERS, PLAYER_POOL, TEAM_NAMES
+from .fixtures import ALICES_TEAM, TEST_USERS, PLAYER_POOL, TEAM_NAMES
 from sf6_fantasy_league.services.team_service import TeamService
 
 load_dotenv()
@@ -35,6 +35,43 @@ def establish_all_test_user_teams():
             print(f"Team established for user: {user['email']}")
         except Exception as e:
             print(f"Error creating team for user {user['email']}: {e}")
+
+def alice_teams():
+    '''
+    To be used after test_league_service.alice_league().
+
+    Once the first 5 alphabetical users are all in a league and draft order
+    is assigned, this function creates a team for each user.
+    '''
+
+    for i in range(5):
+        user = TEST_USERS[i]
+        sv = team_service_init(user["email"], user["password"])
+        sv.create_team(TEAM_NAMES[i])
+
+def alice_draft():
+    '''
+    Once Alice's league and team is established, this function drafts players
+    to all users in the league. 
+
+    ["Alice", "Dana", "Evan", "Bobert", "Charlie"]
+    ^ pick direction for reference
+    '''
+    sv_list = []
+    a_team = ALICES_TEAM
+    a_team.reverse()
+
+    for i in range(5):
+        user = a_team[i]
+        sv_list.append(team_service_init(user["email"], user["password"]))
+    
+    for i in range(5):
+        try:
+            print(f"Picking player for user {a_team[i]["manager_name"]}")
+            sv_list[i].pick_player(choice(PLAYER_POOL))
+        except Exception as e:
+            print(f"Failed to pick player for user {a_team[i]["manager_name"]}: {e}")
+            continue
 
 def main():
     pass

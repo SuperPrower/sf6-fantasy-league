@@ -4,7 +4,7 @@ from random import choice
 from dotenv import load_dotenv
 import supabase
 from sf6_fantasy_league.services.league_service import LeagueService
-from tests.fixtures import DUMMY_LEAGUE_NAMES, TEST_USERS, PLAYER_POOL
+from tests.fixtures import DUMMY_LEAGUE_NAMES, TEST_USERS
 
 load_dotenv()
 
@@ -80,9 +80,25 @@ def assign_draft_orders_for_all_leagues():
             print(f"Failed to assign draft order: {e}")
             continue
 
+def alice_league():
+    '''
+    Logs in as Alice and creates a league which the first 5 users all join.
+    Assigns draft order for said league.
+    '''
+    alice = TEST_USERS[0]
+    sv = league_service_init(alice["email"], alice["password"])
+    sv.create_then_join_league("Alices League")
+    alices_league = sv.get_my_league()
+
+    for i in range(1,5):
+        user = TEST_USERS[i]
+        temp_sv = league_service_init(user["email"], user["password"])
+        temp_sv.join_league(alices_league)
+    
+    sv.assign_draft_order(["Alice", "Dana", "Evan", "Bobert", "Charlie"])
+
 def main():
     pass
-
 
 if __name__ == "__main__":
     main()

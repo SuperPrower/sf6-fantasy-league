@@ -23,9 +23,15 @@ class LeagueService(BaseService):
         Returns True if successful.
 
     assign_draft_order(ordered_usernames: list[str]) -> bool
-        Assigns draft positions to all managers in the league based on the order
-        of usernames provided. Can only be done by the league owner and only
-        before the draft is locked.
+        Updates the league table row for the users league with a draft order,
+        stored as a jsonb list of user IDs (ordered). Also assigns the first
+        pick user via the ordered usernames.
+        Returns True if successful.
+
+    begin_draft() -> bool
+        Runs through checks (league size, teams created, etc.) before 
+        officially beginning the draft, allowing the current pick turn user
+        to select their player.
         Returns True if successful.
     """
     def create_then_join_league(self, league_name: str):
@@ -112,7 +118,7 @@ class LeagueService(BaseService):
             )
         
         if league.data["locked"]:
-            raise Exception("This league has been locked.")
+            raise Exception("You cannot leave a league once the draft has begun.")
 
         # remove the user from the league
         self.verify_query(
@@ -125,15 +131,11 @@ class LeagueService(BaseService):
         return True
 
     def assign_draft_order(self, ordered_usernames: list[str]):
-
-        if not ordered_usernames:
-            raise Exception("Draft order list cannot be empty.")
-
         league_id = self.get_my_league()
-
         if not league_id:
             raise Exception("You are not currently in a league.")
 
+        # validation
         league = self.verify_query(
             self.supabase
             .table("leagues")
@@ -148,6 +150,7 @@ class LeagueService(BaseService):
         if league["locked"]:
             raise Exception("Cannot modify draft order once the draft has begun.")
 
+        # check the provided usernames are accurate
         managers = self.verify_query(
             self.supabase
             .table("managers")
@@ -164,6 +167,7 @@ class LeagueService(BaseService):
             if username not in manager_map:
                 raise Exception(f"Invalid username in draft list: {username}")
 
+        # updates draft order and pick turn
         draft_order = [manager_map[name] for name in ordered_usernames]
 
         self.verify_query(
@@ -183,12 +187,11 @@ class LeagueService(BaseService):
         return True
     
     def begin_draft(self):
-
         league_id = self.get_my_league()
-
         if not league_id:
             raise Exception("You are not currently in a league.")
 
+        # validation
         league = self.verify_query(
             self.supabase
             .table("leagues")
@@ -216,6 +219,7 @@ class LeagueService(BaseService):
         if len(managers) < 2:
             raise Exception("A league must have at least 2 managers to begin the draft.")
 
+        # update league/begin draft
         self.verify_query(
             self.supabase
             .table("leagues")

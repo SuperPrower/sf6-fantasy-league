@@ -34,9 +34,6 @@ class BaseService:
             Verifies a query by ensuring it is executed without issue and
             actually returns data. 
             Returns the APIResponse.
-            
-        get_my_user() -> str:
-            Returns the current user's manager row from the `managers` table.
 
         get_my_league() -> str:
             Returns the user's league UUID.
@@ -82,16 +79,6 @@ class BaseService:
             raise Exception("Query ran successfully but returned no data.")
 
         return result
-
-    def get_my_user(self):
-        result = self.verify_query((
-            self.supabase
-            .table("managers")
-            .select("*")
-            .eq("user_id", self.user_id)
-            ))
-
-        return result.data[0]
 
     def get_my_league(self):
         result = self.verify_query((

@@ -8,14 +8,17 @@ class TeamService(BaseService):
     priority submission, and draft order assignment.
 
     Methods:
-    create_team(team_name: str, player_list: list[str]) -> bool
+    create_team(team_name: str) -> bool
         Creates a new team for the authenticated manager within their current 
-        league. On success, inserts a new row into the teams table and links 
-        it to the manager via managers.team_id.
+        league.
+        Returns True if successful
+
+    pick_player(player_name: str) -> bool
+        Adds a player to a user's team within the game specification.
         Returns True if successful
     """
     def create_team(self, team_name: str):
-        # validate state
+        # validation
         if not self.get_my_league():
             raise Exception("You are not in a league!")
         if self.get_my_team():
@@ -27,6 +30,7 @@ class TeamService(BaseService):
         if not re.fullmatch(r'^\w+$', team_name):
             raise Exception("Team name must only include letters, numbers, and underscores.")
     
+        # insert new team into table
         self.verify_query(
             self.supabase
             .table("teams")
@@ -46,16 +50,21 @@ class TeamService(BaseService):
         if not self.get_my_team():
             raise Exception("You do not have a team!")
 
+        # check if its the clients turn to pick
         league = self.verify_query(
             self.supabase
             .table("leagues")
-            .select("draft_order, pick_turn")
+            .select("draft_order, pick_turn, pick_direction, locked")
             .eq("league_id", self.get_my_league())
         ).data
+
+        if league[0]["locked"] == False:
+            raise Exception("The draft hasn't begun yet!")
 
         if league[0]["pick_turn"] != self.user_id:
             raise Exception("It's not your turn to pick a player!")
         
+        # check if player exists
         result = self.verify_query(
             self.supabase
             .table("players")
@@ -66,16 +75,17 @@ class TeamService(BaseService):
         if not result.data:
             raise Exception("Entered player is not in the player pool!")
         
+        # check player is available
         taken_players = self.verify_query(
             self.supabase
             .table("team_players")
             .select("player_name, team_id")
             .eq("league_id", self.get_my_league())
         )
-
         if player_name in {row["player_name"] for row in taken_players.data}:
             raise Exception("This player has already been picked!")
         
+        # check users team is not full
         team_player_count = sum(
             1 for row in taken_players.data if row["team_id"] == self.get_my_team()
         )
@@ -83,6 +93,31 @@ class TeamService(BaseService):
         if team_player_count == 5:
             raise Exception("This team is full!")
         
+        # update pick turn with snake draft logic
+        draft_order = league[0]["draft_order"]
+        direction = league[0]["pick_direction"]
+        current = league[0]["pick_turn"]
+
+        idx = draft_order.index(current)
+        next_idx = idx + direction
+
+        if next_idx >= len(draft_order) or next_idx < 0:
+            direction *= -1
+            next_idx = idx
+
+        next_pick = draft_order[next_idx]
+            
+        self.verify_query(
+            self.supabase
+            .table("leagues")
+            .update({
+                "pick_turn": next_pick,
+                "pick_direction": direction
+            })
+            .eq("league_id", self.get_my_league())
+        )
+    
+        # insert player into table
         self.verify_query(
             self.supabase
             .table("team_players")
@@ -93,14 +128,4 @@ class TeamService(BaseService):
                 })
             )
         
-        draft_order = league[0]["draft_order"]
-        next_pick = draft_order[(draft_order.index(league[0]["pick_turn"])+1)%len(draft_order)] 
-    
-        self.verify_query(
-            self.supabase
-            .table("leagues")
-            .update({"pick_turn": next_pick})
-            .eq("league_id", self.get_my_league())
-        )
-    
         return True
