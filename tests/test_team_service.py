@@ -3,9 +3,8 @@ from random import shuffle, choice
 from copy import deepcopy
 
 from dotenv import load_dotenv
-import supabase
 from .fixtures import ALICES_TEAM, TEST_USERS, PLAYER_POOL, TEAM_NAMES
-from sf6_fantasy_league.services.team_service import TeamService
+from app.services.team_service import TeamService
 
 load_dotenv()
 

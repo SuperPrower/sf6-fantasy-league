@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from supabase import create_client
 from .fixtures import TEST_USERS, FALSE_USERS
-from sf6_fantasy_league.services.signup_service import SignupService
+from app.services.signup_service import SignupService
 
 load_dotenv()
 

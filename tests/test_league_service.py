@@ -3,7 +3,7 @@ import os
 from random import choice
 from dotenv import load_dotenv
 import supabase
-from sf6_fantasy_league.services.league_service import LeagueService
+from app.services.league_service import LeagueService
 from tests.fixtures import DUMMY_LEAGUE_NAMES, TEST_USERS
 
 load_dotenv()

@@ -1,5 +1,5 @@
 import re
-from sf6_fantasy_league.services.base_service import BaseService
+from app.services.base_service import BaseService
 
 class LeagueService(BaseService):
     """

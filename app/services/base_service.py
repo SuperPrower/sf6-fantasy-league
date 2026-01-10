@@ -1,5 +1,5 @@
 import re
-from sf6_fantasy_league.db.supabase_client import get_supabase_client
+from app.db.supabase_client import get_supabase_client
 
 class BaseService:
     """

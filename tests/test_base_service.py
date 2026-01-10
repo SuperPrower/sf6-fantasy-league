@@ -1,7 +1,7 @@
 from random import choice
 from copy import deepcopy
 from .fixtures import TEST_USERS
-from sf6_fantasy_league.services.base_service import BaseService
+from app.services.base_service import BaseService
 
 """
 Contains tests for:
