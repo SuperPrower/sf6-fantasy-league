@@ -41,8 +41,8 @@ class LeagueService(BaseService):
         # naming format rules
         if len(league_name) < 6 or len(league_name) > 24:
             raise Exception("League name must be inbetween 6 and 24 characters.")
-        if not re.fullmatch(r'^[\w ]+$', league_name):
-            raise Exception("League name must only include letters, numbers, underscores, and spaces.")
+        if not re.fullmatch(r"^[\w' ]+$", league_name):
+            raise Exception("League name must only include letters, numbers, underscores, apostrophes, and spaces.")
 
         # create league
         result = self.verify_query(
@@ -116,6 +116,9 @@ class LeagueService(BaseService):
             .eq("league_id", self.get_my_league())
             .single()
             )
+        
+        if league.data["league_owner"] == self.user_id:
+            raise Exception("You cannot leave a league you own!")
         
         if league.data["locked"]:
             raise Exception("You cannot leave a league once the draft has begun.")

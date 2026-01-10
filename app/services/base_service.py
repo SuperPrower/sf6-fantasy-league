@@ -14,10 +14,6 @@ class BaseService:
         supabase (Client):
             An authenticated Supabase client instance.
 
-        user_id (str):
-            The authenticated user's UUID, used as the primary key in the
-            `managers` table.
-
         access_token (str):
             The authenticated user's access token
 
@@ -87,6 +83,9 @@ class BaseService:
             .select("league_id")
             .eq("user_id", self.user_id)
             ))
+        
+        if not result.data:
+            return None
 
         return result.data[0]["league_id"]
 

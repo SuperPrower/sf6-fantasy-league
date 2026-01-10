@@ -16,14 +16,17 @@ def team_service_init(email, password):
     return sv
 
 def submit_user_team(sv):
+    '''
+    Submits a dummy team when passed an authorised supabase client
+    '''
     teamname = choice(TEAM_NAMES)
-    player_list = deepcopy(PLAYER_POOL)
-    shuffle(player_list)
-    player_list = player_list[:25]
-    sv.create_team(teamname, player_list)
+    sv.create_team(teamname)
     print("Team submitted successfuly.")
 
 def establish_all_test_user_teams():
+    '''
+    Creates a dummy team for each test user.
+    '''
     users = deepcopy(TEST_USERS)
 
     for user in users:
@@ -34,6 +37,7 @@ def establish_all_test_user_teams():
             print(f"Team established for user: {user['email']}")
         except Exception as e:
             print(f"Error creating team for user {user['email']}: {e}")
+
 
 def alice_teams():
     '''
@@ -47,6 +51,7 @@ def alice_teams():
         user = TEST_USERS[i]
         sv = team_service_init(user["email"], user["password"])
         sv.create_team(TEAM_NAMES[i])
+
 
 def alice_draft():
     '''
@@ -73,7 +78,7 @@ def alice_draft():
             continue
 
 def main():
-    pass
+    establish_all_test_user_teams()
 
 if __name__ == "__main__":
     main()

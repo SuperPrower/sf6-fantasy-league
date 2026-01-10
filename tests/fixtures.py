@@ -61,7 +61,7 @@ ALICES_TEAM = [
 FALSE_USERS = [
     {"email": "user1gmail.com", "password": "G!7rP2vH#9qZ", "manager_name": "Alice"},  # invalid email
     {"email": "user2@gmail.com", "password": "short", "manager_name": "Bobert"},        # password too short
-    {"email": "user3@gmail.com", "password": "J&5yL6wR^2pQ", "manager_name": "Ch"},     # manager name too short
+    {"email": "user3@gmail.com", "password": "J&5yL6wR^2pQ", "manager_name": "C"},     # manager name too short
     {"email": "user4@gmail.com", "password": "T%3bV9nE@7rY", "manager_name": "Dana_123456789012345"},  # name too long
     {"email": "user5@gmail.com", "password": "F!6kH8zM$4jL", "manager_name": "Evan!"},  # invalid char
 
@@ -79,7 +79,7 @@ FALSE_USERS = [
 
     {"email": "user16@gmail.com", "password": "4M!Z@K7", "manager_name": "Paula"},       # password too short
     {"email": "user17@gmail.com", "password": "Z!7H@P$2M8F9", "manager_name": "Qu!nn"}, # invalid char
-    {"email": "user18@gmail.com", "password": "9P$Z!H@2M7F8", "manager_name": "Ra"},     # name too short
+    {"email": "user18@gmail.com", "password": "9P$Z!H@2M7F8", "manager_name": "R"},     # name too short
     {"email": "user19@gmail.com", "password": "M2$P@7Z!9HF8", "manager_name": "Samuel_1234567890123"}, # name too long
     {"email": "user20@gmailcom", "password": "H@9!ZP$M27F8", "manager_name": "Tina!"}   # invalid email & char
 ]

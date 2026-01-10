@@ -1,10 +1,12 @@
-from copy import deepcopy
+import supabase
 import os
+
+from copy import deepcopy
 from random import choice
 from dotenv import load_dotenv
-import supabase
+
 from app.services.league_service import LeagueService
-from tests.fixtures import DUMMY_LEAGUE_NAMES, TEST_USERS
+from .fixtures import DUMMY_LEAGUE_NAMES, TEST_USERS
 
 load_dotenv()
 
@@ -15,7 +17,11 @@ def league_service_init(email, password):
     sv = LeagueService(email, password)
     return sv
 
+
 def create_dummy_leagues():
+    '''
+    Creates a set of 5 dummy leagues.
+    '''
     users = deepcopy(TEST_USERS[:5])
 
     for i, user in enumerate(users):
@@ -27,7 +33,12 @@ def create_dummy_leagues():
         except Exception as e:
             print(f"Failed to create league '{league_name}': {e}")
 
+
 def join_dummy_leagues():
+    '''
+    Joins all test users to all dummy leagues randomly. Some users may remain
+    in no league should a league be full.
+    '''
     admin_client = supabase.create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
     leagues = admin_client.table("leagues").select("*").execute().data
     league_id_map = {l["league_name"]: l["league_id"] for l in leagues if l["league_name"] in DUMMY_LEAGUE_NAMES}
@@ -44,7 +55,22 @@ def join_dummy_leagues():
         except Exception as e:
             print(f"Failed to join league for user '{user['email']}': {e}")
 
+
+def leave_dummy_league():
+    test_user = choice(TEST_USERS)
+    test_email = test_user["email"]
+    test_pass = test_user["password"]
+
+    sv = league_service_init(test_email, test_pass)
+    print(f"User ID: {sv.user_id}\nLeague ID: {sv.get_my_league()}")
+    sv.leave_league()
+    print(f"League left successuly for user {test_email}")
+
+
 def assign_draft_orders_for_all_leagues():
+    '''
+    Grabs all test leagues and their owners and assigns the draft order.
+    '''
     admin_client = supabase.create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
     leagues = admin_client.table("leagues").select("*").execute()
 
@@ -71,14 +97,12 @@ def assign_draft_orders_for_all_leagues():
 
         usernames = [m["manager_name"] for m in managers_in_league]
 
-        if idx == 0:
-            usernames[0] = "INVALID_USERNAME"
-
         try:
             sv.assign_draft_order(usernames)
         except Exception as e:
             print(f"Failed to assign draft order: {e}")
             continue
+
 
 def alice_league():
     '''
@@ -97,8 +121,9 @@ def alice_league():
     
     sv.assign_draft_order(["Alice", "Dana", "Evan", "Bobert", "Charlie"])
 
+
 def main():
-    pass
+    leave_dummy_league()
 
 if __name__ == "__main__":
     main()

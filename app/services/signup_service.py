@@ -17,10 +17,10 @@ class SignupService():
         # pass & username validation
         if len(password) < 8:
             raise Exception("Password must be at least 8 characters long.")
-        if 4 > len(manager_name) or len(manager_name) > 16:
-            raise Exception("Username must be inbetween 4 and 16 characters.")
-        if not re.fullmatch(r'^\w+$', manager_name):
-            raise Exception("Username must only include letters, numbers, and underscores.")
+        if 2 > len(manager_name) or len(manager_name) > 16:
+            raise Exception("Username must be inbetween 2 and 16 characters.")
+        if not re.fullmatch(r"^[\w']+$", manager_name):
+            raise Exception("Username must only include letters, numbers, underscores, and apostrophes.")
 
         # sign up the user
         try:
