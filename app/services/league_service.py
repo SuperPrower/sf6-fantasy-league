@@ -107,6 +107,9 @@ class LeagueService(BaseService):
     def leave_league(self):
         if not(self.get_my_league()):
             raise Exception("User is not in a league.")
+        
+        if self.get_my_team():
+            raise Exception("You must delete your team first!")
 
         # get the league id and check if its locked
         league = self.verify_query(
@@ -119,6 +122,14 @@ class LeagueService(BaseService):
         
         if league.data["league_owner"] == self.user_id:
             raise Exception("You cannot leave a league you own!")
+        # ------------------------------------------------------
+        #
+        #   CHANGE THIS
+        #   A OWNER THAT ATTEMPTS TO LEAVE A LEAGUE SHOULD FIRST:
+        #   - CHECK THE LEAGUE IS EMPTY (BAR THEM)
+        #   - IF IT IS, CALL THE delete_league() FUNCTION
+        #
+        # ------------------------------------------------------
         
         if league.data["locked"]:
             raise Exception("You cannot leave a league once the draft has begun.")
@@ -132,6 +143,14 @@ class LeagueService(BaseService):
             )
 
         return True
+
+    def delete_league(self):
+        pass
+    # ------------------------------------------------------
+    #
+    # deletes a users league (provided it is empty and they are the owner)
+    #
+    # ------------------------------------------------------
 
     def assign_draft_order(self, ordered_usernames: list[str]):
         league_id = self.get_my_league()
