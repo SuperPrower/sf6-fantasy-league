@@ -57,14 +57,7 @@ class BaseService:
         self.access_token = session.access_token
         self.refresh_token = session.refresh_token
         self.supabase.auth.set_session(session.access_token, session.refresh_token)
-
-        self.verify_query(
-            self.supabase
-            .table("managers")
-            .select("*")
-            .eq("user_id", self.user_id)
-        )
-
+        
     def verify_query(self, query):
         try:
             result = query.execute()

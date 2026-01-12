@@ -43,14 +43,6 @@ class TeamService(BaseService):
 
         return True
 
-    def delete_team(self):
-        pass
-    # ------------------------------------------------------
-    #
-    # deletes a users team to allow them to leave their league.
-    #
-    # ------------------------------------------------------
-
     def pick_player(self, player_name: str):
         # validate state
         if not self.get_my_league():

@@ -19,7 +19,10 @@ class LeagueService(BaseService):
         Returns True if successful.
 
     leave_league() -> bool
-        Removes the authenticated user from their current league.
+        Removes the authenticated user from their current league and ensures
+        their team is deleted. If they are the owner, they may only leave once
+        they are the last member in their league. Owners delete leagues on
+        leave.
         Returns True if successful.
 
     assign_draft_order(ordered_usernames: list[str]) -> bool
@@ -105,53 +108,79 @@ class LeagueService(BaseService):
         return True
 
     def leave_league(self):
-        if not(self.get_my_league()):
+        # store league and team to reduce api queries
+        my_league = self.get_my_league()
+        my_team = self.get_my_team()
+
+        # validation
+        if not(my_league):
             raise Exception("User is not in a league.")
         
-        if self.get_my_team():
-            raise Exception("You must delete your team first!")
-
-        # get the league id and check if its locked
         league = self.verify_query(
             self.supabase
             .table("leagues")
             .select("*")
-            .eq("league_id", self.get_my_league())
+            .eq("league_id", my_league)
             .single()
             )
-        
-        if league.data["league_owner"] == self.user_id:
-            raise Exception("You cannot leave a league you own!")
-        # ------------------------------------------------------
-        #
-        #   CHANGE THIS
-        #   A OWNER THAT ATTEMPTS TO LEAVE A LEAGUE SHOULD FIRST:
-        #   - CHECK THE LEAGUE IS EMPTY (BAR THEM)
-        #   - IF IT IS, CALL THE delete_league() FUNCTION
-        #
-        # ------------------------------------------------------
-        
+
         if league.data["locked"]:
             raise Exception("You cannot leave a league once the draft has begun.")
-
-        # remove the user from the league
-        self.verify_query(
+        
+        # check if league is full
+        members = self.verify_query(
             self.supabase
             .table("managers")
-            .update({"league_id": None})
-            .eq("user_id", self.user_id)
+            .select("*")
+            .eq("league_id", my_league)
+            )
+        
+        # owners can leave then delete leagues they are the only members of
+        # anyone else can leave a league they dont own anytime
+        if league.data["league_owner"] == self.user_id:
+            # make sure owner is last member
+            if len(members.data) != 1:
+                raise Exception("You cannot leave a league you own that is not empty!")
+
+            # delete the users team first
+            if my_team:
+                self.verify_query(
+                    self.supabase
+                    .table("teams")
+                    .delete()
+                    .eq("team_id", my_team)
+                )
+
+            # delete the league
+            self.verify_query(
+                self.supabase
+                .table("leagues")
+                .delete()
+                .eq("league_id", my_league)
             )
 
-        return True
+            return True
+            
+        else:
+            #delete the users team first
+            if my_team:
+                self.verify_query(
+                    self.supabase
+                    .table("teams")
+                    .delete()
+                    .eq("team_id", my_team)
+                )
 
-    def delete_league(self):
-        pass
-    # ------------------------------------------------------
-    #
-    # deletes a users league (provided it is empty and they are the owner)
-    #
-    # ------------------------------------------------------
-
+            # remove the user from the league
+            self.verify_query(
+                self.supabase
+                .table("managers")
+                .update({"league_id": None})
+                .eq("user_id", self.user_id)
+                )
+            
+            return True
+        
     def assign_draft_order(self, ordered_usernames: list[str]):
         league_id = self.get_my_league()
         if not league_id:
