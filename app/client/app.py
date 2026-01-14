@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget
+from PyQt6.QtWidgets import QMainWindow
 from PyQt6.QtCore import Qt
 from app.client.session import Session
 from app.client.views.login_view import LoginView
-# from app.client.views.home_view import HomeView
+from app.client.views.home_view import HomeView
 
 
 class FantasyApp(QMainWindow):
@@ -12,16 +12,31 @@ class FantasyApp(QMainWindow):
         self.setWindowTitle("Fantasy Street Fighter 6")
         self.resize(800, 600)
 
-        # login view is default
+        self.show_login_view()
+    
+    def show_login_view(self):
         self.login_view = LoginView(app=self)
         self.setCentralWidget(self.login_view)
 
     def show_home_view(self):
-        from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
+        self.home_view = HomeView()
 
-        home = QWidget()
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel(f"Home View Placeholder {Session.user}"))
-        home.setLayout(layout)
+        # Connect navigation signals
+        self.home_view.open_league_view.connect(self.show_league_view)
+        self.home_view.open_team_view.connect(self.show_team_view)
+        self.home_view.open_players.connect(self.show_players_view)
+        self.home_view.open_leaderboards.connect(self.show_leaderboards_view)
 
-        self.setCentralWidget(home)
+        self.setCentralWidget(self.home_view)
+
+    def show_league_view(self):
+        print("League view requested")
+
+    def show_team_view(self):
+        print("Team view requested")
+
+    def show_players_view(self):
+        print("Players view requested")
+
+    def show_leaderboards_view(self):
+        print("Leaderboards view requested")

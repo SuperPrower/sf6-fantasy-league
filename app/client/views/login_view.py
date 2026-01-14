@@ -8,8 +8,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 
-from time import sleep
-
 from app.services.auth_service import AuthService
 from app.client.session import Session
 
@@ -134,6 +132,7 @@ class LoginView(QWidget):
             base = AuthService.login(email, password)
             Session.auth_base = base
             Session.user = base.get_my_username()
+            Session.init_services()
 
             self.status_label.setText(f"Login successful! Welcome back {Session.user}.")
             self.status_label.setStyleSheet("color: #2e7d32;")
