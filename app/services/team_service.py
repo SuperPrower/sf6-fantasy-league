@@ -10,8 +10,7 @@ class TeamService():
     Methods:
     create_team(team_name: str) -> bool
         Creates a new team for the authenticated manager within their current 
-        league.
-        Returns True if successful
+        league. Returns the users new team ID.
 
     pick_player(player_name: str) -> bool
         Adds a player to a user's team within the game specification.
@@ -48,7 +47,7 @@ class TeamService():
             })
         )
 
-        return True
+        return self.get_my_team()
 
     def pick_player(self, player_name: str):
         my_league = self.get_my_league()

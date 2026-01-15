@@ -8,8 +8,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 
-from app.services.auth_service import AuthService
 from app.client.session import Session
+from app.services.session_store import SessionStore
+from app.services.auth_service import AuthService
 
 
 class LoginView(QWidget):
@@ -121,6 +122,11 @@ class LoginView(QWidget):
         self.setLayout(root_layout)
     
     def attempt_login(self):
+        '''
+        Attempts to login a user with the provided email and password.
+        Initialises the Session class as well as storing the access & refresh
+        token for subsequent logins.
+        '''
         email = self.email_input.text()
         password = self.password_input.text()
         
@@ -133,6 +139,11 @@ class LoginView(QWidget):
             Session.auth_base = base
             Session.user = base.get_my_username()
             Session.init_services()
+
+            SessionStore.save({
+                "access_token": base.access_token,
+                "refresh_token": base.refresh_token,
+            })
 
             self.status_label.setText(f"Login successful! Welcome back {Session.user}.")
             self.status_label.setStyleSheet("color: #2e7d32;")

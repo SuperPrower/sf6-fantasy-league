@@ -10,8 +10,7 @@ class LeagueService():
     Methods:
     create_then_join_league(league_name: str) -> bool
         Creates a new league with the given name and assigns the current user to
-        it. 
-        Returns True if successful.
+        it. Returns the users new league ID.
 
     join_league(league_id: str) -> bool
         Assigns the authenticated user to an existing league specified by 
@@ -36,12 +35,32 @@ class LeagueService():
         officially beginning the draft, allowing the current pick turn user
         to select their player.
         Returns True if successful.
+
+    set_forfeit(forfeit: str) -> bool
+        Sets the forfeit for a league.
     """
     def __init__(self, base: BaseService):
         self.base = base
 
     def __getattr__(self, name):
         return getattr(self.base, name)
+
+    def get_my_league_name(self):
+        league_id = self.get_my_league()
+        if not league_id:
+            raise Exception("You are not currently in a league.")
+        
+        result = self.verify_query((
+            self.supabase
+            .table("leagues")
+            .select("league_name")
+            .eq("league_id", league_id)
+            ))
+        
+        if not result.data:
+            return None
+
+        return result.data[0]["league_name"]
 
     def create_then_join_league(self, league_name: str):
         if self.get_my_league():
@@ -72,7 +91,7 @@ class LeagueService():
             .eq("user_id", self.user_id)
             )
         
-        return True
+        return self.get_my_league()
 
     def join_league(self, league_id: str):
         if self.get_my_league():
@@ -279,6 +298,38 @@ class LeagueService():
             .update({"locked": True})
             .eq("league_id", league_id)
             .eq("league_owner", self.user_id)
+        )
+
+        return True
+
+    def set_forfeit(self, forfeit):
+        league_id = self.get_my_league()
+        if not league_id:
+            raise Exception("You are not currently in a league.")
+        
+        # naming format rules
+        if len(forfeit) < 12 or len(forfeit) > 128:
+            raise Exception("Forfeit  must be inbetween 12 and 128 characters.")
+        if not re.fullmatch(r"^[\w' ]+$", forfeit):
+            raise Exception("Forfeit must only include letters, numbers, underscores, apostrophes, and spaces.")
+    
+        # validation
+        league = self.verify_query(
+            self.supabase
+            .table("leagues")
+            .select("league_owner, locked")
+            .eq("league_id", league_id)
+            .single()
+        ).data
+
+        if league["league_owner"] != self.user_id:
+            raise Exception("Only the league owner can set the forfeit")
+
+        self.verify_query(
+            self.supabase
+            .table("leagues")
+            .update({"forfeit": forfeit})
+            .eq("league_id", league_id)
         )
 
         return True

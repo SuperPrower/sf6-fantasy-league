@@ -117,8 +117,32 @@ def start_drafts():
             print(f"Failed to begin draft: {e}")
             continue
 
+def set_a_random_leagues_forfeit():
+    admin_client = supabase.create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+    leagues = admin_client.table("leagues").select("*").execute()
+
+    for idx, league in enumerate(leagues.data):
+        owner_user_id = league["league_owner"]
+
+        manager_row = admin_client.table("managers") \
+            .select("manager_name, user_id") \
+            .eq("user_id", owner_user_id) \
+            .single() \
+            .execute().data
+
+        manager_name = manager_row["manager_name"]
+        owner_user = next(u for u in TEST_USERS if u["manager_name"] == manager_name)
+        email = owner_user["email"]
+        password = owner_user["password"]
+
+        base = AuthService.login(email, password)
+        sv = LeagueService(base)
+
+        sv.set_forfeit("Play dhalsim for a year")
+        break
+
 def main():
-    pass
+    set_a_random_leagues_forfeit()
 
 if __name__ == "__main__":
     main()
