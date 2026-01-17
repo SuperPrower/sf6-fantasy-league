@@ -1,17 +1,17 @@
-import re
-from app.db.supabase_client import get_supabase_client
 
 class BaseService:
     """
     Base service class for all authenticated Supabase-backed services.
 
-    This class is responsible for:
-    - Assigning attributes for use by other services from the AuthService
-    - Providing helper functions multiple services might use
+    This class is responsible for assigning base attributes and methods for
+    use by other services.
 
     Attributes:
         supabase (Client):
-            An authenticated Supabase client instance.
+            An authenticated Supabase client instance
+        
+        user_id (str):
+            An authenticated users UUID
 
         access_token (str):
             The authenticated user's access token
@@ -21,20 +21,25 @@ class BaseService:
 
 
     Methods:
-        __init__(email: str, password: str):
-            Signs in a user using the provided credentials and assigns the
-            attributes outlined above.
+        __init__(supabase: Client, user_id: str, access_token: str, refresh_token: str):
+            Sets all the class attributes.
 
         verify_query(query: query) -> APIResponse:
             Verifies a query by ensuring it is executed without issue and
-            actually returns data. 
-            Returns the APIResponse.
+            actually returns data. Returns the APIResponse or None if the 
+            query returned empty.
+
+        get_my_username() -> str:
+            Returns the user's username
 
         get_my_league() -> str:
-            Returns the user's league UUID.
+            Returns the user's league UUID
 
-        get_my_team() -> str:
-            Returns the user's team UUID.
+        get_my_league() -> str:
+            Returns the user's league UUID
+
+        get_system_state() -> dict:
+            Returns the newest system message
     """
     def __init__(self, supabase, user_id, access_token, refresh_token):
         self.supabase = supabase

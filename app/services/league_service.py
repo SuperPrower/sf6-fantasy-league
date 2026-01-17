@@ -8,11 +8,9 @@ class LeagueService():
     league creation, joining, leaving
 
     Methods:
-    get_my_league_name() -> str
-        Returns the users league name as a string.
-    
-    get_league_owner_status() -> bool
-        Returns True/False if the user is the league owner or not.
+    get_my_league_aesthetics() -> dics
+        Returns the users league name, league forfeit, and league owner id
+        in a dict.
 
     create_then_join_league(league_name: str) -> bool
         Creates a new league with the given name and assigns the current user to
@@ -20,30 +18,26 @@ class LeagueService():
 
     join_league(league_id: str) -> bool
         Assigns the authenticated user to an existing league specified by 
-        `league_id`.
-        Returns True if successful.
+        `league_id`. Returns True if successful.
 
     leave_league() -> bool
         Removes the authenticated user from their current league and ensures
         their team is deleted. If they are the owner, they may only leave once
         they are the last member in their league. Owners delete leagues on
-        leave.
-        Returns True if successful.
+        leave. Returns True if successful.
 
     assign_draft_order(ordered_usernames: list[str]) -> bool
         Updates the league table row for the users league with a draft order,
         stored as a jsonb list of user IDs (ordered). Also assigns the first
-        pick user via the ordered usernames.
-        Returns True if successful.
+        pick user via the ordered usernames. Returns True if successful.
 
     begin_draft() -> bool
         Runs through checks (league size, teams created, etc.) before 
         officially beginning the draft, allowing the current pick turn user
-        to select their player.
-        Returns True if successful.
+        to select their player. Returns True if successful.
 
     set_forfeit(forfeit: str) -> bool
-        Sets the forfeit for a league.
+        Sets the forfeit for a league. Returns True if successful.
     """
     def __init__(self, base: BaseService):
         self.base = base
@@ -51,62 +45,25 @@ class LeagueService():
     def __getattr__(self, name):
         return getattr(self.base, name)
 
-    def get_my_league_name(self):
-        league_id = self.get_my_league()
-        if not league_id:
-            raise Exception("You are not currently in a league.")
-        
-        result = self.verify_query((
-            self.supabase
-            .table("leagues")
-            .select("league_name")
-            .eq("league_id", league_id)
-            ))
-        
-        if not result.data:
-            return None
-
-        return result.data[0]["league_name"]
-
-    def get_league_owner_status(self):
+    def get_league_aesthetics(self):
+        # validating league state
         league_id = self.get_my_league()
         if not league_id:
             raise Exception("You are not currently in a league.")
 
         # validation
-        league = self.verify_query(
+        aesthetics = self.verify_query(
             self.supabase
             .table("leagues")
-            .select("league_owner")
+            .select("league_owner, forfeit, league_name")
             .eq("league_id", league_id)
             .single()
         ).data
 
-        if league["league_owner"] != self.user_id:
-            return False
-        else:
-            return True
-
-    def get_league_forfeit(self):
-        league_id = self.get_my_league()
-        if not league_id:
-            raise Exception("You are not currently in a league.")
-
-        # validation
-        league = self.verify_query(
-            self.supabase
-            .table("leagues")
-            .select("forfeit")
-            .eq("league_id", league_id)
-            .single()
-        ).data
-
-        if not league:
-            return None
-        else:
-            return league["forfeit"]
+        return aesthetics
 
     def create_then_join_league(self, league_name: str):
+        # validating league state
         if self.get_my_league():
             raise Exception("User is already in a league.")
         
@@ -138,6 +95,7 @@ class LeagueService():
         return self.get_my_league()
 
     def join_league(self, league_id: str):
+        # validating league state
         if self.get_my_league():
             raise Exception("User is already in a league.")
 
@@ -181,7 +139,7 @@ class LeagueService():
         my_league = self.get_my_league()
         my_team = self.get_my_team()
 
-        # validation
+        # validating league state
         if not(my_league):
             raise Exception("User is not in a league.")
         

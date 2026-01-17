@@ -5,11 +5,9 @@ SUPABASE_ANON_KEY = "sb_publishable_oLJyY3yFFqYoXP3-xvzTWA_aS6dGneP"
 
 def get_supabase_client():
     """
-    Returns a Supabase client using the anon key.
-
-    Note: The client is unauthenticated by default. Services that need 
-    authenticated access must call `auth.set_session(access_token)` 
-    after retrieving the client.
+    Returns an unauthenticated Supabase client using the anon key.
+    This is the only place in the entire project wherethe Supabase anon key is
+    present.
     """
     client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
     return client

@@ -1,13 +1,25 @@
-from supabase import create_client
 from app.db.supabase_client import get_supabase_client
 from app.services.base_service import BaseService
 
 class AuthService:
+    '''
+    Service responsible for authenticating user sessions.
+
+    This service will authenticate a user and return a "BaseService" object.
+    This base service object can then be used to instantiate other services.
+    
+    Methods:
+    login(email: str, password: str) -> BaseService
+        Logs in a user with an email and password and then returns an 
+        authenticated "BaseService" object.
+    
+    login_with_token(token_data: dict) -> BaseService
+        Logs in a user using their cached access token and refresh token, saved
+        into AppData.Roaming.SF6FantasyLeague on login, before returning a
+        authenticated "BaseService" object
+    '''
     @staticmethod
     def login(email: str, password: str) -> BaseService:
-        '''
-        Logs in with an email and password and returns a base service object.
-        '''
         if not email or not password:
             raise ValueError("Email and password must be provided.")
 
@@ -29,10 +41,6 @@ class AuthService:
 
     @staticmethod
     def login_with_token(token_data: dict) -> BaseService:
-        '''
-        Logs in with a saves session (stored in 
-        AppData.Roaming.SF6FantasyLeague) and returns a base service object.
-        '''
         refresh_token = token_data.get("refresh_token")
         if not refresh_token:
             raise ValueError("Missing refresh token for session restoration")
@@ -41,7 +49,7 @@ class AuthService:
 
         try:
             auth_response = supabase.auth.refresh_session(refresh_token)
-            session = auth_response.session  # <-- the real session object
+            session = auth_response.session
 
             return BaseService(
                 supabase=supabase,

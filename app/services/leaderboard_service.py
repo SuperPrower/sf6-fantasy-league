@@ -6,13 +6,13 @@ class LeaderboardService():
 
     Methods:
     get_my_standings() -> jsonb
-        Returns the user's team's player standings.
+        Returns the user's team's player standings
 
     get_leaguemate_standings() -> jsonb
-        Returns the standings of all players in all teams of a user's league.
+        Returns the standings of all players in all teams of a user's league
 
     get_player_cum_points() -> jsonb
-        Returns the total cumulative point standings of all players.
+        Returns the total cumulative point standings of all players
     """
     def __init__(self, base: BaseService):
         self.base = base
@@ -45,6 +45,7 @@ class LeaderboardService():
         }]
     
     def get_leaguemate_standings(self):
+        # validating league state
         my_league = self.get_my_league()
 
         if not my_league:
@@ -60,6 +61,7 @@ class LeaderboardService():
         if league[0]["draft_complete"] == False:
             raise Exception("The draft isn't complete yet!")
 
+        # grabbing all teams and owners (knowing the draft is done)
         teams = self.verify_query(
             self.supabase
             .table("teams")
@@ -81,6 +83,7 @@ class LeaderboardService():
             for row in owners
         }
         
+        # grabbing all elements in team_players
         rosters = self.verify_query(
             self.supabase
             .table("team_players")
@@ -90,6 +93,7 @@ class LeaderboardService():
 
         standings = {}
 
+        # formatting stuff
         for row in rosters.data:
             team_id = row["team_id"]
 
@@ -115,8 +119,7 @@ class LeaderboardService():
             for team_id, data in standings.items()
         ]
     
-    def get_player_cum_points(self):
-        
+    def get_player_cum_points(self):  
         players = self.verify_query(
             self.supabase
             .table("players")

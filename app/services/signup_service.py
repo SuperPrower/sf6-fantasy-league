@@ -30,7 +30,7 @@ class SignupService():
             raise Exception(f"Signup failed: {e}")
 
         # insert user to database
-        # if this fails, the user will become orphaned - fix this later
+        # if this fails, the user will become orphaned - ggs
         (self.supabase
         .table("managers")
         .insert({

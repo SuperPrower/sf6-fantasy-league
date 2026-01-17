@@ -1,4 +1,3 @@
-import json
 import re
 from app.services.base_service import BaseService
 
@@ -16,8 +15,8 @@ class TeamService():
         league. Returns the users new team ID.
 
     pick_player(player_name: str) -> bool
-        Adds a player to a user's team within the game specification.
-        Returns True if successful
+        Adds a player to a user's team within the game specification. Returns 
+        True if successful.
     """
     def __init__(self, base: BaseService):
         self.base = base

@@ -2,15 +2,16 @@ import json
 import os
 from pathlib import Path
 
-
 def get_app_data_dir() -> Path:
     if os.name == "nt":
         return Path(os.environ["APPDATA"]) / "SF6FantasyLeague"
 
-
 class SessionStore:
     '''
-    Methods for saving, loading, and clearing stored sessions.
+    Methods for saving, loading, and clearing stored sessions. Nothing fancy,
+    just json dumps and path grabbing using the os library.
+
+    Method names are self explanatory.
     '''
     _filename = "session.json"
 

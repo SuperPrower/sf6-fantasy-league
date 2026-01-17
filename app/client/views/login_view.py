@@ -10,8 +10,6 @@ from PyQt6.QtCore import (
     Qt, 
     QTimer)
 
-from PyQt6.QtGui import QPixmap
-
 from app.client.session import Session
 from app.services.session_store import SessionStore
 from app.services.auth_service import AuthService

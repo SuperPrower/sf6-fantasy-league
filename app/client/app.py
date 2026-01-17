@@ -1,14 +1,23 @@
+import webbrowser
+
 from PyQt6.QtWidgets import QMainWindow
-from PyQt6.QtCore import Qt
-from app.client.views.league_view import LeagueView
+
 from app.services.session_store import SessionStore
 from app.services.auth_service import AuthService
+
 from app.client.session import Session
+
+from app.client.views.league_view import LeagueView
 from app.client.views.login_view import LoginView
 from app.client.views.home_view import HomeView
 
-
 class FantasyApp(QMainWindow):
+    '''
+    Main app file for the application. Has functions for displaying all views.
+
+    Also responsible for restoring user sessions on launch, otherwise 
+    displaying the login view.
+    '''
     def __init__(self):
         super().__init__()
 
@@ -27,14 +36,12 @@ class FantasyApp(QMainWindow):
 
         try:
             base = AuthService.login_with_token(data)
-
             Session.auth_base = base
-            Session.user = base.get_my_username()
             Session.init_services()
-
             return True
+        
         except Exception as e:
-            print(e)
+            # clears cached session if failed to login
             SessionStore.clear()
             return False
     
@@ -60,5 +67,14 @@ class FantasyApp(QMainWindow):
         print("Leaderboards view requested")
 
     def open_help(self):
-        import webbrowser
-        webbrowser.open("https://github.com/bfararjeh/sf6-fantasy-league/blob/main/README.md#faqs")
+        webbrowser.open(
+            "https://github.com/bfararjeh/sf6-fantasy-league/blob/main/README.md#faqs"
+        )
+
+    def logout(self):
+        from app.client.session import Session
+        from app.services.session_store import SessionStore
+
+        Session.reset()
+        SessionStore.clear()
+        self.app.show_login_view()

@@ -1,10 +1,13 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QSizePolicy
+from PyQt6.QtWidgets import (
+    QWidget, 
+    QHBoxLayout, 
+    QPushButton, 
+    QLabel
+)
+
 from PyQt6.QtCore import Qt
 
-import webbrowser
-
 from app.client.session import Session
-
 
 class HeaderBar(QWidget):
     def __init__(self, app):
@@ -14,52 +17,39 @@ class HeaderBar(QWidget):
 
     def _build_ui(self):
         self.setFixedHeight(40)
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #f5f5f5;
-                border-bottom: 1px solid #dddddd;
-            }
-        """)
 
+        # create layout
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 0, 10, 0)
         layout.setSpacing(10)
 
-        # ----- Banner -----
-
+        # banner created when there's a message to display
         if Session.banner_message != None:
             self.banner_label = QLabel(Session.banner_message)
-            self.banner_label.setAlignment(
-                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
-            )
-
-            self.banner_label.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Preferred
-            )
-
+            self.banner_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
             self.banner_label.setStyleSheet("""
                 QLabel {
+                    font-size: 12px;
                     background-color: #9ccfff;
                     color: #1661a8;
-                    font-size: 12px;
                     padding-left: 10px;
                     padding-right: 10px;
                 }
             """)
 
             layout.addWidget(self.banner_label)
+
         else:
             layout.addStretch()
 
-        # ----- Buttons -----
+        # help and logout button
         help_button = QPushButton("Help")
         help_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        help_button.clicked.connect(self._open_help)
+        help_button.clicked.connect(self.app.open_help)
 
         logout_button = QPushButton("Log out")
         logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        logout_button.clicked.connect(self._logout)
+        logout_button.clicked.connect(self.app.logout)
 
         for btn in (help_button, logout_button):
             btn.setFixedHeight(32)
@@ -67,10 +57,10 @@ class HeaderBar(QWidget):
         
         help_button.setStyleSheet("""
             QPushButton {
-                border: none;
                 font-size: 12px;
-                color: #000000;
                 background-color: #ffffff;
+                color: #000000;
+                border: none;
             }
             QPushButton:hover {
                 text-decoration: underline;
@@ -79,10 +69,10 @@ class HeaderBar(QWidget):
 
         logout_button.setStyleSheet("""
             QPushButton {
-                border: none;
                 font-size: 12px;
-                color: #ffffff;
                 background-color: #a80000;
+                color: #ffffff;
+                border: none;
             }
             QPushButton:hover {
                 text-decoration: underline;
@@ -91,16 +81,3 @@ class HeaderBar(QWidget):
 
         layout.addWidget(help_button)
         layout.addWidget(logout_button)
-
-    def _open_help(self):
-        webbrowser.open(
-            "https://github.com/bfararjeh/sf6-fantasy-league/blob/main/README.md#faqs"
-        )
-
-    def _logout(self):
-        from app.client.session import Session
-        from app.services.session_store import SessionStore
-
-        Session.reset()
-        SessionStore.clear()
-        self.app.show_login_view()
