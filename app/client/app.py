@@ -10,10 +10,11 @@ from app.client.widgets.blue_screen import BlueScreen
 
 from app.client.controllers.session import Session
 
-from app.client.views.signup_view import SignupView
 from app.client.views.login_view import LoginView
-from app.client.views.league_view import LeagueView
+from app.client.views.signup_view import SignupView
 from app.client.views.home_view import HomeView
+from app.client.views.league_view import LeagueView
+from app.client.views.team_view import TeamView
 
 class FantasyApp(QMainWindow):
     '''
@@ -37,14 +38,16 @@ class FantasyApp(QMainWindow):
         else:
             self.show_login_view()
 
-    def _try_restore_app_cache(self) -> bool:
+    def _try_restore_app_cache(self):
         cache = AppStore._load_all()
-        if not cache:
-            return False
-        
+
+        # favourites
         favourites = cache.get("favourites")
-        if isinstance(favourites, list):
-            Session.favourite_players = favourites
+        try:
+            if isinstance(favourites[0], dict):
+                Session.favourite_players = favourites[0]
+        except Exception as e:
+            pass
 
     def _try_restore_session(self) -> bool:
         data = AuthStore.load()
@@ -82,7 +85,8 @@ class FantasyApp(QMainWindow):
         self.setCentralWidget(self.league_view)
 
     def show_team_view(self):
-        print("Team view requested")
+        self.team_view = TeamView(app=self)
+        self.setCentralWidget(self.team_view)
 
     def show_players_view(self):
         print("Players view requested")

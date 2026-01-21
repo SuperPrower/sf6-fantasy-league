@@ -83,6 +83,8 @@ class FooterNav(QWidget):
                         font-weight: bold;
                         background-color: #700000;
                         color: #ffffff;
+                        padding-left: 10px;
+                        padding-right: 10px;
                     }
                 """)
 

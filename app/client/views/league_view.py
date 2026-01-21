@@ -32,7 +32,6 @@ class LeagueView(QWidget):
         self.setLayout(self.root_layout)
 
         # clears then builds ui
-        Session.init_aesthetics()
         self._refresh_view()
 
     def _build_main(self):

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from packaging import version
 
 from app.services.leaderboard_service import LeaderboardService
 from app.services.team_service import TeamService
@@ -25,6 +25,7 @@ class Session:
     warning_message = None
     banner_message = None
     last_live_scores = None
+    min_version = VERSION
 
     # cached league info
     current_league_id = None
@@ -34,6 +35,11 @@ class Session:
     leaguemates = []
     draft_order = []
     next_pick = None
+    draft_complete = False
+
+    # cached team info
+    current_team_id = None
+    current_team_name = None
 
     # cached leaderboard info
     favourite_players = []
@@ -53,6 +59,15 @@ class Session:
             cls.banner_message = system_state["banner_message"]
             cls.warning_message = system_state["warning_message"]
             cls.last_live_scores = system_state["last_live_scores"]
+            cls.min_version = system_state["version"]
+
+            client_version = version.parse(cls.VERSION.strip('"'))
+            server_version = version.parse(cls.min_version.strip('"'))
+
+            if server_version.release[1] > client_version.release[1]:
+                cls.blocking_state = True
+                cls.warning_message = f"Unsupported Version, please download the latest version ({server_version}) from the GitHub page: https://github.com/bfararjeh/sf6-fantasy-league/releases"
+
             return cls.blocking_state
 
         except Exception as e:
@@ -90,6 +105,7 @@ class Session:
             cls.leaguemates = league_data["leaguemates"]
             cls.draft_order = league_data["draft_order"]
             cls.next_pick = league_data["next_pick"]
+            cls.draft_complete = league_data["draft_complete"]
 
         except Exception:
             cls.current_league_id = None
@@ -111,26 +127,34 @@ class Session:
             cls.current_team_name = cls.team_service.get_my_team_name() or None
         except Exception:
             cls.current_team_name = None
-
-        # players
+        
+        # player scores
         try:
-            cls.player_scores = cls.leaderboard_service.get_players()
-        except Exception as e:
-            cls.player_scores = []
-            cls.blocking_state = True
+            if cls.player_scores == []:
+                cls.player_scores = cls.leaderboard_service.get_players()
+        except:
+            cls.blocking_state = True       # block when db is inaccessible
 
     @classmethod
     def reset(cls):
+        # authenticated supabase session
         cls.auth_base = None
 
+        # username and user id
         cls.user = None
         cls.user_id = None
 
+        '''
+        cached system state info
+        blocking defaults True: block everything if connection fails
+        '''
         cls.blocking_state = True
         cls.warning_message = None
         cls.banner_message = None
         cls.last_live_scores = None
+        cls.min_version = cls.VERSION
 
+        # cached league info
         cls.current_league_id = None
         cls.current_league_name = None
         cls.league_forfeit = None
@@ -138,10 +162,17 @@ class Session:
         cls.leaguemates = []
         cls.draft_order = []
         cls.next_pick = None
+        cls.draft_complete = False
 
+        # cached team info
+        cls.current_team_id = None
+        cls.current_team_name = None
+
+        # cached leaderboard info
         cls.favourite_players = []
         cls.player_scores = []
 
+        # services locked and loaded
         cls.team_service = None
         cls.league_service = None
         cls.leaderboard_service = None

@@ -166,6 +166,7 @@ class LoginView(QWidget):
             base = AuthService.login(email, password)
             Session.auth_base = base
             Session.user = base.get_my_username()
+            Session.init_system_state()
             Session.init_services()
             Session.init_aesthetics()
 

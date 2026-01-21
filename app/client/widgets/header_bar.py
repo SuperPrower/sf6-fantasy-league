@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, 
     QHBoxLayout, 
     QPushButton, 
-    QLabel
+    QLabel,
 )
 
 from PyQt6.QtCore import Qt
@@ -42,6 +42,35 @@ class HeaderBar(QWidget):
         else:
             layout.addStretch()
 
+        # profile button
+        self.popup = QLabel(
+            "<b>Profile Info</b><br>"
+            f"User: {Session.user}<br>"
+            f"User ID: {Session.user_id}"
+        )
+        self.popup.setWindowFlags(Qt.WindowType.ToolTip)
+        self.popup.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.popup.setStyleSheet("""
+            background: #f5f5f5;
+            border: 1px solid #aaa;
+            padding: 6px;
+        """)
+        self.popup.hide()
+
+        def show_popup():
+            if self.popup.isVisible():
+                self.popup.hide()
+            else:
+                pos = profile_button.mapToGlobal(
+                    profile_button.rect().bottomRight()
+                )
+                self.popup.move(pos)
+                self.popup.show()
+
+        profile_button = QPushButton("Profile")
+        profile_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        profile_button.clicked.connect(show_popup)
+
         # help and logout button
         help_button = QPushButton("Help")
         help_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -51,10 +80,22 @@ class HeaderBar(QWidget):
         logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
         logout_button.clicked.connect(self.app.logout)
 
-        for btn in (help_button, logout_button):
+        for btn in (help_button, logout_button, profile_button):
             btn.setFixedHeight(32)
             btn.setFixedWidth(64)
-        
+
+        profile_button.setStyleSheet("""
+            QPushButton {
+                font-size: 12px;
+                background-color: #ffffff;
+                color: #000000;
+                border: none;
+            }
+            QPushButton:hover {
+                text-decoration: underline;
+            }
+        """)
+
         help_button.setStyleSheet("""
             QPushButton {
                 font-size: 12px;
@@ -79,5 +120,6 @@ class HeaderBar(QWidget):
             }
         """)
 
+        layout.addWidget(profile_button)
         layout.addWidget(help_button)
         layout.addWidget(logout_button)

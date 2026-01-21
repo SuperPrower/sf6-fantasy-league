@@ -58,7 +58,7 @@ class LeagueService():
         league = self.verify_query(
             self.supabase
             .table("leagues")
-            .select("league_owner, forfeit, league_name, locked, draft_order, pick_turn, pick_direction")
+            .select("league_owner, forfeit, league_name, locked, draft_order, pick_turn, pick_direction, draft_complete")
             .eq("league_id", league_id)
             .single()
         ).data
@@ -88,7 +88,8 @@ class LeagueService():
             result.update({
                 "draft_order": [manager_map[uid] for uid in league["draft_order"]],
                 "next_pick": manager_map[league["pick_turn"]],
-                "pick_direction": league.get("pick_direction")
+                "pick_direction": league.get("pick_direction"),
+                "draft_complete": league.get("draft_complete")
             })
 
         return result
