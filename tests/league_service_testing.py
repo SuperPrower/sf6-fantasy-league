@@ -143,7 +143,10 @@ def set_a_random_leagues_forfeit():
         break
 
 def main():
-    pass
+    create_dummy_leagues()
+    join_dummy_leagues()
+    assign_draft_orders_for_all_leagues()
+    start_drafts()
 
 if __name__ == "__main__":
     main()

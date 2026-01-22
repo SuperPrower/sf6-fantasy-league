@@ -1,0 +1,1 @@
+pyinstaller --onefile --windowed --name SF6FantasyLeague --icon app/client/assets/icons/logo.ico app/main.py
