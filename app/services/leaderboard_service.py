@@ -36,14 +36,14 @@ class LeaderboardService():
         rows = self.verify_query(
             self.supabase
             .table("team_players")
-            .select("player_name, points")
+            .select("player_name, points, players(region), joined_at, left_at")
             .eq("team_id", my_team)
         ).data
 
         return [{
             "name": "My Team",
             "players": [
-                {"id": r["player_name"], "points": r["points"]}
+                {"id": r["player_name"], "points": r["points"], "region": r["players"]["region"], "joined_at":r["joined_at"], "left_at":r["left_at"]}
                 for r in rows
             ],
             "total_points": sum(r["points"] for r in rows)

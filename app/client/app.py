@@ -2,6 +2,8 @@ import webbrowser
 
 from PyQt6.QtWidgets import QMainWindow
 
+from PyQt6.QtGui import QKeySequence, QShortcut
+
 from app.services.auth_store import AuthStore
 from app.services.app_store import AppStore
 from app.services.auth_service import AuthService
@@ -28,6 +30,9 @@ class FantasyApp(QMainWindow):
 
         # instantiating blue screen, just in case ;)
         self.blue_screen = BlueScreen(self)
+
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.activated.connect(self.close)
 
         self.setWindowTitle("SF6 Fantasy League")
         self.setFixedSize(1000, 800)

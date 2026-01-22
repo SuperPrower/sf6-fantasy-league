@@ -40,6 +40,7 @@ class Session:
     # cached team info
     current_team_id = None
     current_team_name = None
+    my_team_data = []
 
     # cached leaderboard info
     favourite_players = []
@@ -127,6 +128,12 @@ class Session:
             cls.current_team_name = cls.team_service.get_my_team_name() or None
         except Exception:
             cls.current_team_name = None
+
+        # my team scores
+        try:
+            cls.my_team_data = cls.leaderboard_service.get_my_standings() or None
+        except Exception:
+            cls.my_team_data = []
         
         # player scores
         try:
@@ -167,6 +174,7 @@ class Session:
         # cached team info
         cls.current_team_id = None
         cls.current_team_name = None
+        cls.my_team_data = []
 
         # cached leaderboard info
         cls.favourite_players = []

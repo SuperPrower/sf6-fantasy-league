@@ -58,6 +58,9 @@ class LoginView(QWidget):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setFixedHeight(30)
 
+        self.email_input.returnPressed.connect(self.attempt_login)
+        self.password_input.returnPressed.connect(self.attempt_login)
+
         # back to signup page
         return_to_login = QPushButton("New user?")
         return_to_login.setCursor(Qt.CursorShape.PointingHandCursor)

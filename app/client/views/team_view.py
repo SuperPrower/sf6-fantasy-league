@@ -1,17 +1,24 @@
+from pathlib import Path
+
+from datetime import datetime
+
 from PyQt6.QtWidgets import (
     QWidget, 
     QLabel, 
     QPushButton, 
     QVBoxLayout, 
     QHBoxLayout, 
-    QLineEdit, 
+    QComboBox,
+    QLineEdit,
     QGroupBox,
     QFrame,
     QSizePolicy,
-    QScrollArea
+    QScrollArea,
 )
 
 from PyQt6.QtCore import Qt
+
+from PyQt6.QtGui import QPixmap
 
 from app.client.controllers.session import Session
 from app.client.controllers.async_runner import run_async
@@ -44,6 +51,7 @@ class TeamView(QWidget):
         self.team_name = Session.current_team_name
         self.next_pick = Session.next_pick
         self.draft_complete = Session.draft_complete
+        self.my_team_data = Session.my_team_data
 
         # main content
         self.content_widget = QWidget()
@@ -70,6 +78,10 @@ class TeamView(QWidget):
         if self.next_pick == self.username and self.draft_complete == False:
             content_layout.addWidget(self._build_draft_pick())
             content_layout.addWidget(self._create_separator())
+        
+        content_layout.addWidget(self._build_my_team())
+        content_layout.addWidget(self._create_separator())
+        content_layout.addWidget(self._build_player_stat_list())
 
 
         # scrollable if required
@@ -85,7 +97,7 @@ class TeamView(QWidget):
     def _build_my_info(self):
         info_cont = QWidget()
         info_layout = QVBoxLayout(info_cont)
-        info_layout.setSpacing(10)
+        info_layout.setSpacing(15)
         info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         team_label = QLabel(f"{self.team_name}")
@@ -107,7 +119,11 @@ class TeamView(QWidget):
         main_layout = QVBoxLayout(pick_cont)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.pick_input = QLineEdit()
+        self.pick_input = QComboBox()
+        player_names = [p["name"] for p in Session.player_scores]
+        player_names_sorted = sorted(player_names, key=str.casefold)
+        self.pick_input.addItems(player_names_sorted)
+        self.pick_input.setEditable(True)
         self.pick_input.setPlaceholderText("Blaz, MenaRD, Leshar...")
 
         pick_group_layout = QVBoxLayout()
@@ -144,24 +160,225 @@ class TeamView(QWidget):
         pick_btn.clicked.connect(self.pick_player)
 
         pick_layout = QHBoxLayout()
-        pick_layout.addWidget(pick_group)
-        pick_layout.addWidget(pick_btn)
+        pick_layout.addWidget(pick_group, stretch=1)
+        pick_layout.addWidget(pick_btn, stretch=1)
         pick_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(pick_label)
+        main_layout.addSpacing(10)
         main_layout.addLayout(pick_layout)
         
         return pick_cont
     
     def _build_my_team(self):
-        pass
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(10)
+
+        # Player row
+        players_row = QHBoxLayout()
+        players_row.setSpacing(10)
+        players_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        team = Session.my_team_data[0] if Session.my_team_data else None
+        players = team.get("players", []) if team else []
+
+        players = self.my_team_data[0].get("players", []) if self.my_team_data else []
+        players.sort(key=lambda p: (p["left_at"] is not None, 
+                                    -datetime.fromisoformat(p["left_at"]).timestamp() if p["left_at"] else 0))
+
+        for i in range(5):
+            if i < len(players):
+                slot = self._build_player_slot(players[i])
+            else:
+                slot = self._build_empty_player_slot()
+
+            players_row.addWidget(slot, stretch=1)
+
+        layout.addLayout(players_row)
+        return container
+
+    def _build_player_slot(self, player: dict):
+        slot = QWidget()
+        layout = QVBoxLayout(slot)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(8)
+
+        image = QLabel()
+        image.setStyleSheet("border: 2px solid #333;")
+        image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        PLAYER_IMG_DIR = Path("app/client/assets/player_pictures")
+
+        player_name = player["id"]
+        img_path = PLAYER_IMG_DIR / f"{player_name}.jpg"
+
+        pixmap = QPixmap(str(img_path))
+        if pixmap.isNull():
+            pixmap = QPixmap(str(PLAYER_IMG_DIR / "placeholder.png"))
+
+        image.setPixmap(
+            pixmap.scaled(
+                140, 140,
+                Qt.AspectRatioMode.IgnoreAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+        )
+
+        name = QLabel(player["id"])
+        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name.setWordWrap(True)
+        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name.setStyleSheet("""
+            font-size: 16px; 
+            font-weight: bold; 
+            color: #333; 
+        """)
+
+        layout.addWidget(image)
+        layout.addWidget(name)
+
+        return slot
+
+    def _build_empty_player_slot(self):
+        slot = QWidget()
+        layout = QVBoxLayout(slot)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(8)
+
+        image = QLabel()
+        image.setFixedSize(140, 140)
+        image.setStyleSheet("""
+            border: 2px dashed #aaa;
+            background: #f0f0f0;
+            color: #999;
+        """)
+        image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image.setText("?")
+
+        name = QLabel("-")
+        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name.setStyleSheet("""
+            font-size: 16px; 
+            font-weight: bold; 
+            color: #999; 
+        """)
+
+
+        layout.addWidget(image)
+        layout.addWidget(name)
+
+        return slot
 
     def _build_player_stat_list(self):
-        pass
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(50, 0, 0, 0)
+        layout.setSpacing(30)
+
+        PLAYER_IMG_DIR = Path("app/client/assets/player_pictures")
+        REGION_ICO_DIR = Path("app/client/assets/icons/flags")
+
+        players = self.my_team_data[0].get("players", []) if self.my_team_data else []
+        players.sort(key=lambda p: (p["left_at"] is not None, 
+                                    -datetime.fromisoformat(p["left_at"]).timestamp() if p["left_at"] else 0))
+        for player in players:
+            if not player:
+                continue
+
+            name = player["id"]
+            region = player.get("region", "Unknown")
+            points = player["points"]
+            joined_at = player["joined_at"]
+            left_at = player["left_at"]
+            active = left_at is None
+
+            # row container
+            row = QFrame()
+            row.setObjectName("playerRow")  # unique identifier
+
+            row.setStyleSheet("""
+                QFrame#playerRow {
+                    border: 2px solid #aaaaaa;
+                    border-radius: 4px;
+                }
+            """)
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(20, 20, 20, 20)
+            row_layout.setSpacing(10)
+
+            # --- Player image ---
+            image = QLabel()
+            image.setFixedSize(200, 200)
+            image.setStyleSheet("border: 5px solid #333;")
+
+            img_path = PLAYER_IMG_DIR / f"{name}.jpg"
+            if not img_path.exists():
+                img_path = PLAYER_IMG_DIR / "placeholder.png"
+
+            pixmap = QPixmap(str(img_path))
+            image.setPixmap(
+                pixmap.scaled(
+                    200,
+                    200,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+            )
+
+            info_col = QVBoxLayout()
+            info_col.setSpacing(0)
+            info_col.setContentsMargins(0,25,0,25)
+
+            img_path = REGION_ICO_DIR / f"{region}.png"
+            if not img_path.exists():
+                img_path = REGION_ICO_DIR / "placeholder.png"
+
+            info_label = QLabel()
+            info_label.setTextFormat(Qt.TextFormat.RichText)
+            info_label.setText(
+                "<div style='line-height: 1.2;'>"
+                f"<span style='font-size:24px; font-weight: bold; color:#333;'>{name}</span><br/>"
+                f"<span style='font-size:16px; color:#777;'>{region}  </span>"
+                f"<img src='{img_path}' width='18' height='12'> "
+                "</div"
+            )
+            info_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+
+            points_label = QLabel(f"Points: {points}")
+            points_label.setStyleSheet("color: #333; font-size: 20px;")
+            points_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
+
+            joined_label = QLabel(f"Joined At: {joined_at.split("T")[0]}")
+            joined_label.setStyleSheet("color: #333; font-size: 20px;")
+            joined_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
+
+            info_col.addWidget(info_label)
+            info_col.addWidget(points_label)
+            info_col.addWidget(joined_label)
+
+            if not active:
+                transferred = QLabel("Transferred") 
+                transferred.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
+                left_label = QLabel(f"Left At: {left_at.split("T")[0]}")
+                left_label.setStyleSheet("color: #333; font-size: 20px;")
+                left_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
+
+                info_col.addWidget(transferred)
+                info_col.addWidget(left_label)
+
+            # --- Assemble row ---
+            row_layout.addWidget(image)
+            row_layout.addLayout(info_col, stretch=1)
+            row_layout.addStretch()
+
+            layout.addWidget(row)
+        
+        return container
 
 
     def pick_player(self):
-        player = self.pick_input.text().strip()
+        player = self.pick_input.currentText()
         print("pick_player: CLICK")
 
         if not player:

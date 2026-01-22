@@ -70,6 +70,7 @@ class TeamService():
 
     def pick_player(self, player_name: str):
         my_league = self.get_my_league()
+        my_team = self.get_my_team()
 
         # validate state
         if not my_league:
@@ -109,12 +110,12 @@ class TeamService():
         taken_players = self.verify_query(
             self.supabase
             .table("team_players")
-            .select("player_name, team_id")
+            .select("player_name, team_id, left_at")
             .eq("league_id", my_league)
         )
         
         team_player_count = sum(
-            1 for row in taken_players.data if row["team_id"] == self.get_my_team()
+            1 for row in taken_players.data if row["team_id"] == my_team and row["left_at"] == None
         )
 
         if team_player_count == 5:
