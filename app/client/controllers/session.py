@@ -45,6 +45,8 @@ class Session:
     # cached leaderboard info
     favourite_players = []
     player_scores = []
+    leaguemate_standings = []
+    favourite_standings = []
 
     # services locked and loaded
     team_service = None
@@ -137,6 +139,15 @@ class Session:
             cls.my_team_data = []
 
     @classmethod
+    def init_leaderboards(cls):
+        try:
+            cls.leaguemate_standings = cls.leaderboard_service.get_leaguemate_standings()
+            cls.favourite_standings = cls.leaderboard_service.get_favourite_standings(cls.favourite_players) if cls.favourite_players else []
+        except Exception:
+            cls.leaguemate_standings = []
+            cls.favourite_standings = []
+
+    @classmethod
     def reset(cls):
         # authenticated supabase session
         cls.auth_base = None
@@ -173,6 +184,8 @@ class Session:
         # cached leaderboard info
         cls.favourite_players = []
         cls.player_scores = []
+        cls.leaguemate_standings = []
+        cls.favourite_standings = []
 
         # services locked and loaded
         cls.team_service = None
