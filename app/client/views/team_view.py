@@ -107,7 +107,7 @@ class TeamView(QWidget):
         create_group_layout = QVBoxLayout()
         create_group_layout.addWidget(self.create_input)
 
-        create_group = QGroupBox("Pick a Player!")
+        create_group = QGroupBox("Create your Team!")
         create_group.setLayout(create_group_layout)
 
         create_label = QLabel("Create a team here!")
@@ -157,7 +157,7 @@ class TeamView(QWidget):
         team_label = QLabel(f"{self.team_name}")
         team_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         team_label.setStyleSheet("""
-            font-size: 48px; 
+            font-size: 64px; 
             font-weight: bold; 
             color: #333; 
         """)
@@ -526,5 +526,3 @@ class TeamView(QWidget):
             color = "#cc0000"
         else:
             color = "#333333"
-
-        self.status_label.setStyleSheet(f"color: {color};")

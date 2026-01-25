@@ -79,7 +79,7 @@ class LeagueView(QWidget):
         self.content_layout.addWidget(self.leave)
 
 
-
+# -- BUILDERS --
 
     def _build_owner_controls(self):
         container = QWidget()
@@ -165,8 +165,7 @@ class LeagueView(QWidget):
         return leave_btn
 
 
-
-# -- IN LEAGUE --
+# -- IN LEAGUE INFO --
 
     def _build_league_info(self):
         container = QWidget()
@@ -180,7 +179,7 @@ class LeagueView(QWidget):
 
         self.league_name_label = QLabel("")
         self.league_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.league_name_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333;")
+        self.league_name_label.setStyleSheet("font-size: 64px; font-weight: bold; color: #333;")
 
         self.league_id_label = QLabel("")
         self.league_id_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -193,25 +192,29 @@ class LeagueView(QWidget):
 
         self.league_capacity = QLabel("")
         self.league_capacity.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.league_capacity.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        self.league_capacity.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;")
 
         self.leaguemates = QLabel("")
         self.leaguemates.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.leaguemates.setStyleSheet("font-size: 18px; color: #333;")
 
-        info = QLabel("League Information")
-        info.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        info.setStyleSheet("font-size: 24px; font-weight: bold; color: #333; padding-bottom: 10px;")
+        layout_mates = QHBoxLayout()
+        layout_mates.setSpacing(10)
+        layout_mates.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        layout.addWidget(info)
-        layout.addWidget(self.league_owner)
         layout.addWidget(self.league_name_label)
         layout.addWidget(self.league_id_label)
-        layout.addWidget(self.league_capacity)
-        layout.addWidget(self.leaguemates)
+        layout.addWidget(self.league_owner)
+        layout_mates.addWidget(self.leaguemates)
+        layout_mates.addWidget(self.league_capacity)
+        layout.addLayout(layout_mates)
+        layout.addWidget(self.forfeit_label)
         layout.addWidget(self._create_separator())
 
         return container
+
+
+# -- IN DRAFT INFO --
 
     def _build_draft_info(self):
         container = QWidget()
@@ -246,11 +249,7 @@ class LeagueView(QWidget):
         return container
 
 
-
-
-
-
-# -- NO LEAGUE
+# -- NO LEAGUE CONTROLS --
 
     def _build_create_and_join_controls(self):
         # create league
@@ -329,13 +328,7 @@ class LeagueView(QWidget):
         return layout
 
 
-
-
-
-
-
-
-# -- OWNER --
+# -- OWNER CONTROLS --
 
     def _build_draft_controls(self):
         layout = QHBoxLayout()
@@ -428,7 +421,6 @@ class LeagueView(QWidget):
         row.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         return row
-
 
 
 # -- BUTTON METHODS --
@@ -595,21 +587,36 @@ class LeagueView(QWidget):
         self._update_view()
 
     def _update_view(self):
-        # League info
-        self.league_owner.setText(str(self.is_owner) or "")
+        # league info
+        if self.is_owner:
+            self.league_owner.setText("Owner")
+            self.league_owner.setVisible(True)
+        else:
+            self.league_owner.setVisible(False)
+            
         self.league_name_label.setText(self.my_league_name or "")
-        self.league_id_label.setText(self.my_league_id or "")
+        self.league_id_label.setText(f"ID: {self.my_league_id}" or "")
         self.league_capacity.setText(f"{len(self.my_leaguemates)}/5" or "")
         self.leaguemates.setText(", ".join(self.my_leaguemates) or "")
+
+        # forfeit info
+        if self.my_league_forfeit:
+            self.forfeit_label.setText(
+            f'<span style="font-weight:bold; color:#bf0000;">Forfeit:</span> {self.my_league_forfeit}'
+        ) 
+        else:
+            self.forfeit_label.setText(
+            f'<span style="font-weight:bold; color:#bf0000;">Forfeit not yet set.</span>'
+        ) 
         
-        # Draft info
+        # draft info
         has_draft = bool(self.my_draft_order)
         self.draft_info_container.setVisible(has_draft)
         if has_draft:
-            self.draft_order_label.setText(", ".join(self.my_draft_order))
-            self.next_pick_label.setText(f"<b>Next to Pick:</b> {self.my_next_pick or 'N/A'}")
+            self.draft_order_label.setText("Draft Order:"+", ".join(self.my_draft_order))
+            self.next_pick_label.setText(f"<b>Next to Pick:</b> {self.my_next_pick}")
 
-        # Conditional controls
+        # conditional controls
         self.owner_controls.setVisible(self.is_owner)
         self.leagueless_controls.setVisible(self.my_league_id is None)
         self.in_league_display.setVisible(self.my_league_id is not None)
