@@ -25,184 +25,234 @@ class LeagueView(QWidget):
         super().__init__()
         self.app = app
 
-        # root layout: defined here to use in other private methods
+        # clears then builds ui
+        self._build_static()
+        self._refresh()
+
+    def _build_static(self):
         self.root_layout = QVBoxLayout()
         self.root_layout.setContentsMargins(0, 0, 0, 0)
         self.root_layout.setSpacing(0)
-        self.setLayout(self.root_layout)
 
-        # clears then builds ui
-        self._refresh_view()
+        self.header = HeaderBar(self.app)
+        self.footer = FooterNav(self.app)
 
-    def _build_main(self):
-        # header
-        self.root_layout.addWidget(HeaderBar(self.app))
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
 
-        # main content
         self.content_widget = QWidget()
 
-        content_layout = QVBoxLayout(self.content_widget)
-        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
-        content_layout.setContentsMargins(50, 35, 50, 35)
-        content_layout.setSpacing(35)
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+        self.content_layout.setContentsMargins(50, 35, 50, 35)
+        self.content_layout.setSpacing(35)
 
-        # grabbing league aesthetics
-        self.league_name = Session.current_league_name or "None"
-        self.league_id = Session.current_league_id or "N/A"
-        self.league_forfeit = Session.league_forfeit or None
-        self.is_owner = Session.is_league_owner or False
-        self.capacity = f"{len(Session.leaguemates)}/5"
-        self.leaguemates = [d['manager_name'] for d in Session.leaguemates]
-        self.draft_order = Session.draft_order
-        self.next_pick = Session.next_pick
+        self.scroll.setWidget(self.content_widget)
 
-        # defining widgets to show owner
-        self.owner_controls = QWidget()
-        owner_layout = QVBoxLayout(self.owner_controls)
-        owner_layout.setContentsMargins(0, 0, 0, 0)
-        owner_layout.setSpacing(20)
-
-        settings_label = QLabel("Owner Controls")
-        settings_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        settings_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333; padding-bottom: 30px;")
-
-        owner_layout.addWidget(settings_label)
-        owner_layout.addLayout(self._build_draft_settings())
-        owner_layout.addLayout(self._build_forfeit_stuff())
-
-        # defining widgets to show to those with no league
-        self.leagueless_controls = QWidget()
-        leagueless_layout = QVBoxLayout(self.leagueless_controls)
-        leagueless_layout.setContentsMargins(0, 0, 0, 0)
-        leagueless_layout.setSpacing(20)
-
-        create_join = self._build_create_and_join()
-
-        leagueless_label = QLabel("Create or Join a League!")
-        leagueless_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        leagueless_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333;")
-
-        leagueless_layout.addWidget(leagueless_label)
-        leagueless_layout.addLayout(create_join[0])
-        leagueless_layout.addLayout(create_join[1])
-
-        # defining widgets to show those in a league
-        self.in_league_controls = QWidget()
-        in_league_layout = QVBoxLayout(self.in_league_controls)
-        in_league_layout.setContentsMargins(0, 0, 0, 0)
-        in_league_layout.setSpacing(20)
-
-        in_league_layout.addWidget(self._build_leave_button(), alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # status label
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setFixedHeight(25)
         self.status_label.setStyleSheet("""
             QLabel {
                 font-size: 12px;
-                color: #cc0000;
             }
         """)
 
-        # adding everything to content layout: ordered
-        content_layout.addWidget(self._build_league_info())
-        content_layout.addWidget(self._create_separator())
-        content_layout.addWidget(self.leagueless_controls)
+        self.root_layout.addWidget(self.header)
+        self.root_layout.addWidget(self.scroll, stretch=1)
+        self.root_layout.addWidget(self.status_label)
+        self.root_layout.addWidget(self.footer)
 
-        if self.league_id != "N/A": 
-            content_layout.addWidget(self._build_league_stats())
-            content_layout.addWidget(self._create_separator())
+        self._build_sections()
 
-        if self.draft_order != []: 
-            content_layout.addWidget(self._build_draft_status())
-            content_layout.addWidget(self._create_separator())
+        self.setLayout(self.root_layout)
 
-        content_layout.addWidget(self.owner_controls)
-        content_layout.addStretch()
-        content_layout.addSpacing(50)
-        content_layout.addWidget(self.status_label)
-        content_layout.addWidget(self.in_league_controls)
+    def _build_sections(self):
+        self.in_league_display = self._build_in_league_display()
+        self.leagueless_controls = self._build_leagueless_controls()
+        self.owner_controls = self._build_owner_controls()
+        self.leave = self._build_leave_button()
 
-        self.owner_controls.setVisible(bool(Session.is_league_owner))
+        self.content_layout.addWidget(self.in_league_display)
+        self.content_layout.addWidget(self.leagueless_controls)
+        self.content_layout.addWidget(self.owner_controls)
+        self.content_layout.addWidget(self.leave)
 
-        if Session.current_league_id is None:
-            self.leagueless_controls.setVisible(True)
-            self.in_league_controls.setVisible(False)
-        else:
-            self.leagueless_controls.setVisible(False)
-            self.in_league_controls.setVisible(True)
 
-        scrollable = QScrollArea()
-        scrollable.setWidgetResizable(True)
-        scrollable.setWidget(self.content_widget)
 
-        self.root_layout.addWidget(scrollable, stretch=1)
-        self.root_layout.addWidget(FooterNav(self.app))
 
+    def _build_owner_controls(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(20)
+
+        self.owner_title = QLabel("Owner Controls")
+        self.owner_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.owner_title.setStyleSheet(
+            "font-size: 24px; font-weight: bold; color: #333; padding-bottom: 10px;"
+        )
+
+        # draft controls
+        self.draft_controls = self._build_draft_controls()
+
+        # forfeit controls
+        self.forfeit_controls = self._build_forfeit_controls()
+
+        layout.addWidget(self.owner_title)
+        layout.addLayout(self.draft_controls)
+        layout.addLayout(self.forfeit_controls)
+
+        container.setVisible(False)
+        return container
+
+    def _build_leagueless_controls(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(20)
+
+        self.leagueless_title = QLabel("Create or Join a League!")
+        self.leagueless_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.leagueless_title.setStyleSheet(
+            "font-size: 24px; font-weight: bold; color: #333;"
+        )
+
+        create_and_join = self._build_create_and_join_controls()
+
+        layout.addWidget(self.leagueless_title)
+        layout.addLayout(create_and_join)
+
+        container.setVisible(False)
+        return container
+
+    def _build_in_league_display(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(20)
+
+        self.league_info = self._build_league_info()
+        self.draft_info_container = self._build_draft_info()
+
+        layout.addWidget(self.league_info)
+        layout.addWidget(self.draft_info_container)
+
+        container.setVisible(False)
+        return container
+
+    def _build_leave_button(self):
+        # leave league
+        leave_btn = QPushButton("Leave League")
+        leave_btn.setFixedWidth(100)
+        leave_btn.setFixedHeight(30)
+        leave_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        leave_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 12px;
+                background-color: #bf0000;
+                color: #ffffff;
+            }
+            QPushButton:hover {
+                background-color: #d10000;
+            }
+            QPushButton:pressed {
+                background-color: #ad0000;
+            }
+        """)
+        leave_btn.clicked.connect(self.leave_league)
+
+        return leave_btn
+
+
+
+# -- IN LEAGUE --
 
     def _build_league_info(self):
-        # league owner, name, and id
-        league_info_container = QWidget()
-        league_info_layout = QVBoxLayout(league_info_container)
-        league_info_layout.setSpacing(10)
-        league_info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.league_owner = QLabel("Owner")
+        self.league_owner = QLabel("")
         self.league_owner.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.league_owner.setStyleSheet("font-size: 20px; font-weight: bold; color: #7d130b;")
 
-        self.league_name_label = QLabel(f"Current League: {self.league_name}")
+        self.league_name_label = QLabel("")
         self.league_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.league_name_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333;")
 
-        self.league_id_label = QLabel(f"ID: {self.league_id}")
+        self.league_id_label = QLabel("")
         self.league_id_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.league_id_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.league_id_label.setStyleSheet("font-size: 14px; color: #222;")
 
-        if self.is_owner == True:
-            league_info_layout.addWidget(self.league_owner)
-        league_info_layout.addWidget(self.league_name_label)
-        league_info_layout.addWidget(self.league_id_label)
-
-        return league_info_container
-
-    def _build_league_stats(self):
-        # league users and capacity
-        league_users_container = QWidget()
-        league_users_layout = QVBoxLayout(league_users_container)
-        league_users_layout.setSpacing(10)
-        league_users_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-
-        # forfeit label only when in league
-        self.forfeit_label = QLabel()
-        self.forfeit_label.setText(
-            f'<span style="font-weight:bold; color:#bf0000;">Forfeit:</span> {self.league_forfeit}'
-        )
+        self.forfeit_label = QLabel("")
         self.forfeit_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.forfeit_label.setStyleSheet("font-size: 16px; color: #333;")
 
-        self.league_capacity = QLabel(f"Capacity: {self.capacity}")
+        self.league_capacity = QLabel("")
         self.league_capacity.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.league_capacity.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
 
-        self.leaguemates = QLabel(f'{", ".join(self.leaguemates)}')
+        self.leaguemates = QLabel("")
         self.leaguemates.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.leaguemates.setStyleSheet("font-size: 18px; color: #333;")
 
-        settings_label = QLabel("League Information")
-        settings_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        settings_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333; padding-bottom: 30px;")
+        info = QLabel("League Information")
+        info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        info.setStyleSheet("font-size: 24px; font-weight: bold; color: #333; padding-bottom: 10px;")
 
-        if self.league_id != "N/A": 
-            league_users_layout.addWidget(settings_label)
-            league_users_layout.addWidget(self.league_capacity)
-            league_users_layout.addWidget(self.leaguemates)
-        if self.league_forfeit is not None: league_users_layout.addWidget(self.forfeit_label)
+        layout.addWidget(info)
+        layout.addWidget(self.league_owner)
+        layout.addWidget(self.league_name_label)
+        layout.addWidget(self.league_id_label)
+        layout.addWidget(self.league_capacity)
+        layout.addWidget(self.leaguemates)
+        layout.addWidget(self._create_separator())
 
-        return league_users_container
+        return container
 
-    def _build_create_and_join(self):
+    def _build_draft_info(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        info = QLabel("Draft Order")
+        info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        info.setStyleSheet(
+            "font-size: 24px; font-weight: bold; color: #333; padding-bottom: 10px;"
+        )
+
+        self.draft_order_label = QLabel("")
+        self.draft_order_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.draft_order_label.setStyleSheet(
+            "font-size: 20px; color: #333;"
+        )
+
+        self.next_pick_label = QLabel("")
+        self.next_pick_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.next_pick_label.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #00a8ff;"
+        )
+
+        layout.addWidget(info)
+        layout.addWidget(self.draft_order_label)
+        layout.addWidget(self.next_pick_label)
+        layout.addWidget(self._create_separator())
+
+        container.setVisible(False)
+        return container
+
+
+
+
+
+
+# -- NO LEAGUE
+
+    def _build_create_and_join_controls(self):
         # create league
         self.create_input = QLineEdit()
         self.create_input.setPlaceholderText("League Name")
@@ -271,18 +321,37 @@ class LeagueView(QWidget):
         join_row.addWidget(join_btn)
         join_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        return [create_row, join_row]
+        layout = QVBoxLayout()
+        layout.addLayout(join_row)
+        layout.addLayout(create_row)
+        layout.addWidget(self._create_separator())
 
-    def _build_draft_settings(self):
-        # draft order
+        return layout
+
+
+
+
+
+
+
+
+# -- OWNER --
+
+    def _build_draft_controls(self):
+        layout = QHBoxLayout()
+
+        group = QGroupBox("Assign Draft Order")
+        group.setLayout(layout)
+
         self.draft_input = QLineEdit()
         self.draft_input.setPlaceholderText("Alice, Bob, Charlie") 
+        layout.addWidget(self.draft_input)
 
-        draft_btn = QPushButton("Set Order")
-        draft_btn.setFixedWidth(100)
-        draft_btn.setFixedHeight(30)
-        draft_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        draft_btn.setStyleSheet("""
+        set_btn = QPushButton("Set Order")
+        set_btn.setFixedWidth(100)
+        set_btn.setFixedHeight(30)
+        set_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        set_btn.setStyleSheet("""
             QPushButton {
                 font-size: 12px;
                 background-color: #019c00;
@@ -295,20 +364,13 @@ class LeagueView(QWidget):
                 background-color: #006a00;
             }
         """)
-        draft_btn.clicked.connect(self.assign_draft_order)
+        set_btn.clicked.connect(self.assign_draft_order)
 
-        draft_layout = QHBoxLayout()
-        draft_layout.addWidget(self.draft_input)
-
-        draft_group = QGroupBox("Assign Draft Order")
-        draft_group.setLayout(draft_layout)
-
-        # begin draft
-        begin_draft_btn = QPushButton("Begin Draft")
-        begin_draft_btn.setFixedWidth(100)
-        begin_draft_btn.setFixedHeight(30)
-        begin_draft_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        begin_draft_btn.setStyleSheet("""
+        begin_btn = QPushButton("Begin Draft")
+        begin_btn.setFixedWidth(100)
+        begin_btn.setFixedHeight(30)
+        begin_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        begin_btn.setStyleSheet("""
             QPushButton {
                 font-size: 12px;
                 background-color: #ffcd00;
@@ -321,33 +383,31 @@ class LeagueView(QWidget):
                 background-color: #d3a900;
             }
         """)
-        begin_draft_btn.clicked.connect(self.begin_draft)
+        begin_btn.clicked.connect(self.begin_draft)
 
-        # begin/assign draft row
         draft_row = QHBoxLayout()
-        draft_row.addWidget(draft_group)
-        draft_row.addWidget(draft_btn)
-        draft_row.addWidget(begin_draft_btn)
+        draft_row.addWidget(group)
+        draft_row.addWidget(set_btn)
+        draft_row.addWidget(begin_btn)
         draft_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         return draft_row
 
-    def _build_forfeit_stuff(self):
-        # forfeit setter
+    def _build_forfeit_controls(self):
         self.forfeit_input = QLineEdit()
         self.forfeit_input.setPlaceholderText("Loser must...")
 
-        forfeit_inner_layout = QVBoxLayout()
-        forfeit_inner_layout.addWidget(self.forfeit_input)
+        layout = QVBoxLayout()
+        layout.addWidget(self.forfeit_input)
 
-        forfeit_group = QGroupBox("Set Forfeit")
-        forfeit_group.setLayout(forfeit_inner_layout)
+        group = QGroupBox("Set Forfeit")
+        group.setLayout(layout)
 
-        forfeit_btn = QPushButton("Submit")
-        forfeit_btn.setFixedWidth(100)
-        forfeit_btn.setFixedHeight(30)
-        forfeit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        forfeit_btn.setStyleSheet("""
+        btn = QPushButton("Submit")
+        btn.setFixedWidth(100)
+        btn.setFixedHeight(30)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setStyleSheet("""
             QPushButton {
                 font-size: 12px;
                 background-color: #ff5cf6;
@@ -360,84 +420,35 @@ class LeagueView(QWidget):
                 background-color: #ff3bf4;
             }
         """)
-        forfeit_btn.clicked.connect(self.set_forfeit)
+        btn.clicked.connect(self.set_forfeit)
 
-        forfeit_row = QHBoxLayout()
-        forfeit_row.addWidget(forfeit_group)
-        forfeit_row.addWidget(forfeit_btn)
-        forfeit_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        row = QHBoxLayout()
+        row.addWidget(group)
+        row.addWidget(btn)
+        row.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        return forfeit_row
+        return row
 
-    def _build_leave_button(self):
-        # leave league
-        leave_btn = QPushButton("Leave League")
-        leave_btn.setFixedWidth(100)
-        leave_btn.setFixedHeight(30)
-        leave_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        leave_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 12px;
-                background-color: #bf0000;
-                color: #ffffff;
-            }
-            QPushButton:hover {
-                background-color: #d10000;
-            }
-            QPushButton:pressed {
-                background-color: #ad0000;
-            }
-        """)
-        leave_btn.clicked.connect(self.leave_league)
 
-        return leave_btn
 
-    def _build_draft_status(self):
-        # draft order and next to pick
-        draft_info_container = QWidget()
-        draft_info_layout = QVBoxLayout(draft_info_container)
-        draft_info_layout.setSpacing(10)
-        draft_info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        order_label = QLabel("Draft Order")
-        order_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        order_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333; padding-bottom: 30px;")
-
-        order_display = QLabel(f"{", ".join(self.draft_order)}")
-        order_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        order_display.setStyleSheet("font-size: 20px; color: #333;")
-
-        next_display = QLabel()
-        next_display.setText(
-            f'<span style="font-weight:bold; color:#333;">Next to Pick:</span> {self.next_pick}'
-        )
-        next_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        next_display.setStyleSheet("font-size: 16px; font-weight: bold; color: #00a8ff;")
-
-        if self.draft_order != []: 
-            draft_info_layout.addWidget(order_label)
-            draft_info_layout.addWidget(order_display)
-            draft_info_layout.addWidget(next_display)
-
-        return draft_info_container
-
+# -- BUTTON METHODS --
 
     def create_league(self):
         name = self.create_input.text().strip()
 
         if not name:
-            self._set_status("Please enter a league name.", status_type="e")
+            self._set_status("Please enter a league name.", code=2)
             return
 
         def _success(success):
             if success:
-                self._refresh_view()
-                self._set_status("League created successfully!", status_type="s")
+                self._refresh()
+                self._set_status("League created successfully!", code=1)
 
         def _error(error):
-            self._set_status(f"Failed to create league: {error}", status_type="e")
+            self._set_status(f"Failed to create league: {error}", code=2)
 
-        self._set_status("Creating League...", status_type="u")
+        self._set_status("Creating League...")
         run_async(
             parent_widget= self.content_widget,
             fn=Session.league_service.create_then_join_league,
@@ -451,19 +462,19 @@ class LeagueView(QWidget):
         print("join_league: CLICK")
 
         if not league_id:
-            self._set_status("Please enter a league ID.", status_type="e")
+            self._set_status("Please enter a league ID.", code=2)
             return
         
         def _success(success):
             if success:  
-                self._refresh_view()
+                self._refresh()
 
-                self._set_status("League joined successfully!", status_type="s")
+                self._set_status("League joined successfully!", code=1)
 
         def _error(error):
-            self._set_status(f"Failed to join league: {error}", status_type="e")
+            self._set_status(f"Failed to join league: {error}", code=2)
 
-        self._set_status("Joining League...", status_type="p")
+        self._set_status("Joining League...")
         run_async(
             parent_widget= self.content_widget,
             fn=Session.league_service.join_league,
@@ -477,13 +488,13 @@ class LeagueView(QWidget):
 
         def _success(success):
             if success:  
-                self._refresh_view()
-                self._set_status("League left successfully!", status_type="s")
+                self._refresh()
+                self._set_status("League left successfully!", code=1)
 
         def _error(error):
-            self._set_status(f"Failed to leave league: {error}", status_type="e")
+            self._set_status(f"Failed to leave league: {error}", code=2)
 
-        self._set_status("Leaving League...", status_type="p")
+        self._set_status("Leaving League...")
         run_async(
             parent_widget= self.content_widget,
             fn=Session.league_service.leave_league,
@@ -497,21 +508,21 @@ class LeagueView(QWidget):
         print("assign_draft_order: CLICK")
 
         if not usernames:
-            self._set_status("Please enter a list of usernames.", status_type="e")
+            self._set_status("Please enter a list of usernames.", code=2)
             return
 
         user_list = [name.strip() for name in usernames.split(",")]
 
         def _success(success):
             if success:  
-                self._refresh_view()
+                self._refresh()
 
-                self._set_status("Draft order assigned successfully!", status_type="s")
+                self._set_status("Draft order assigned successfully!", code=1)
 
         def _error(error):
-            self._set_status(f"Failed to assign draft order: {error}", status_type="e")
+            self._set_status(f"Failed to assign draft order: {error}", code=2)
 
-        self._set_status("Assignign draft order...", status_type="p")
+        self._set_status("Assignign draft order...")
         run_async(
             parent_widget= self.content_widget,
             fn=Session.league_service.assign_draft_order,
@@ -525,14 +536,14 @@ class LeagueView(QWidget):
 
         def _success(success):
             if success:  
-                self._refresh_view()
+                self._refresh()
 
-                self._set_status("Draft started successfully! Head over to the team page to pick your players!", status_type="s")
+                self._set_status("Draft started successfully! Head over to the team page to pick your players!", code=1)
 
         def _error(error):
-            self._set_status(f"Failed to begin draft: {error}", status_type="e")
+            self._set_status(f"Failed to begin draft: {error}", code=2)
 
-        self._set_status("Beginning draft...", status_type="p")
+        self._set_status("Beginning draft...")
         run_async(
             parent_widget= self.content_widget,
             fn=Session.league_service.begin_draft,
@@ -546,16 +557,16 @@ class LeagueView(QWidget):
         print("set_forfeit: CLICK")
 
         if not forfeit:
-            self._set_status("Please enter a forfeit.", status_type="e")
+            self._set_status("Please enter a forfeit.", code=2)
             return
 
         def _success(success):
             if success:  
-                self._refresh_view()
-                self._set_status("Forfeit set!", status_type="s")
+                self._refresh()
+                self._set_status("Forfeit set!", code=1)
 
         def _error(error):
-            self._set_status(f"Failed to set forfeit: {error}", status_type="e")
+            self._set_status(f"Failed to set forfeit: {error}", code=2)
 
         run_async(
             parent_widget= self.content_widget,
@@ -566,26 +577,53 @@ class LeagueView(QWidget):
         )
 
 
-    def _refresh_view(self):
-        self._clear_layout(self.layout())
+# -- LAYOUT STUFF
+
+    def _refresh(self):
         Session.init_aesthetics()
-        self._build_main()
 
-    def _clear_layout(self, layout):
-        if layout is None:
-            return
+        # grabbing league aesthetics
+        self.my_league_name = Session.current_league_name
+        self.my_league_id = Session.current_league_id
+        self.my_league_forfeit = Session.league_forfeit
+        self.my_capacity = f"{len(Session.leaguemates)}/5"
+        self.my_leaguemates = [d['manager_name'] for d in Session.leaguemates]
+        self.my_draft_order = Session.draft_order
+        self.my_next_pick = Session.next_pick
+        self.is_owner = Session.is_league_owner
 
-        while layout.count():
-            item = layout.takeAt(0)
+        self._update_view()
 
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-                continue
+    def _update_view(self):
+        # League info
+        self.league_owner.setText(str(self.is_owner) or "")
+        self.league_name_label.setText(self.my_league_name or "")
+        self.league_id_label.setText(self.my_league_id or "")
+        self.league_capacity.setText(f"{len(self.my_leaguemates)}/5" or "")
+        self.leaguemates.setText(", ".join(self.my_leaguemates) or "")
+        
+        # Draft info
+        has_draft = bool(self.my_draft_order)
+        self.draft_info_container.setVisible(has_draft)
+        if has_draft:
+            self.draft_order_label.setText(", ".join(self.my_draft_order))
+            self.next_pick_label.setText(f"<b>Next to Pick:</b> {self.my_next_pick or 'N/A'}")
 
-            child_layout = item.layout()
-            if child_layout is not None:
-                self._clear_layout(child_layout)
+        # Conditional controls
+        self.owner_controls.setVisible(self.is_owner)
+        self.leagueless_controls.setVisible(self.my_league_id is None)
+        self.in_league_display.setVisible(self.my_league_id is not None)
+
+    def _set_status(self, msg, code=0):
+        if code == 1:
+            color = "#2e7d32"
+        elif code == 2:
+            color = "#cc0000"
+        else:
+            color = "#333333"
+
+        self.status_label.setStyleSheet(f"color: {color};")
+        self.status_label.setText(msg)
 
     def _create_separator(self):
         separator = QFrame()
@@ -598,15 +636,3 @@ class LeagueView(QWidget):
             QSizePolicy.Policy.Fixed
         )
         return separator
-
-    def _set_status(self, msg, status_type):
-        self.status_label.setText(msg)
-
-        if status_type == "s":
-            color = "#2e7d32"
-        elif status_type == "e":
-            color = "#cc0000"
-        else:
-            color = "#333333"
-
-        self.status_label.setStyleSheet(f"color: {color};")

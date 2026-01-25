@@ -324,6 +324,9 @@ class LeagueService():
 
         if len(managers) < 2:
             raise Exception("A league must have at least 2 managers to begin the draft.")
+        
+        if len(managers) != len(league["draft_order"]):
+            raise Exception("The draft order must be updated before beginning the draft!")
 
         # update league/begin draft
         self.verify_query(

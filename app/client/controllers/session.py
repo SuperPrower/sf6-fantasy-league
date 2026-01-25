@@ -107,9 +107,14 @@ class Session:
             cls.league_forfeit = league_data["forfeit"] or None
             cls.is_league_owner = True if league_data["league_owner"] == cls.user_id else False
             cls.leaguemates = league_data["leaguemates"]
-            cls.draft_order = league_data["draft_order"]
-            cls.next_pick = league_data["next_pick"]
-            cls.draft_complete = league_data["draft_complete"]
+            try:
+                cls.draft_order = league_data["draft_order"]
+                cls.next_pick = league_data["next_pick"]
+                cls.draft_complete = league_data["draft_complete"]
+            except Exception:
+                cls.draft_order = []
+                cls.next_pick = None
+                cls.draft_complete = False
 
         except Exception:
             cls.current_league_id = None
@@ -119,6 +124,7 @@ class Session:
             cls.leaguemates = []
             cls.draft_order = []
             cls.next_pick = None
+            cls.draft_complete = False
 
         # team id
         try:
