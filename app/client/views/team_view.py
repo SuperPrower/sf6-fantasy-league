@@ -32,74 +32,70 @@ class TeamView(QWidget):
         super().__init__()
         self.app = app
 
-        # root layout: defined here to use in other private methods
+        # build static ui then update
+        self._build_static()
+        self._refresh()
+
+    def _build_static(self):
         self.root_layout = QVBoxLayout()
         self.root_layout.setContentsMargins(0, 0, 0, 0)
         self.root_layout.setSpacing(0)
-        self.setLayout(self.root_layout)
 
-        # clears then builds ui
-        self._refresh_view()
+        self.header = HeaderBar(self.app)
+        self.footer = FooterNav(self.app)
 
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
 
-    def _build_main(self):
-        self.root_layout.addWidget(HeaderBar(self.app))
-
-        # grabbing cached data
-        self.username = Session.user
-        self.user_id = Session.user_id
-        self.team_name = Session.current_team_name
-        self.next_pick = Session.next_pick
-        self.draft_complete = Session.draft_complete
-        self.my_team_standings = Session.my_team_standings
-
-        # main content
         self.content_widget = QWidget()
 
-        content_layout = QVBoxLayout(self.content_widget)
-        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
-        content_layout.setContentsMargins(50, 35, 50, 35)
-        content_layout.setSpacing(35)
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+        self.content_layout.setContentsMargins(50, 35, 50, 35)
+        self.content_layout.setSpacing(10)
 
-        # status label
+        self.scroll.setWidget(self.content_widget)
+
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setFixedHeight(25)
         self.status_label.setStyleSheet("""
             QLabel {
                 font-size: 12px;
-                color: #cc0000;
             }
         """)
 
-        # adding layouts to main content
-        if self.team_name != None:
-            content_layout.addWidget(self._build_my_info())
-            content_layout.addWidget(self._create_separator())
-            if self.next_pick == self.username and self.draft_complete == False:
-                content_layout.addWidget(self._build_draft_pick())
-                content_layout.addWidget(self._create_separator())
-            content_layout.addWidget(self._build_my_team())
-            content_layout.addWidget(self._create_separator())
-            content_layout.addWidget(self._build_player_stat_list())
-        else:
-            content_layout.addWidget(self._build_team_creator())
-            content_layout.addWidget(self.status_label)
+        self.root_layout.addWidget(self.header)
+        self.root_layout.addWidget(self.scroll, stretch=1)
+        self.root_layout.addWidget(self.status_label)
+        self.root_layout.addWidget(self.footer)
 
-        # scrollable if required
-        scrollable = QScrollArea()
-        scrollable.setWidgetResizable(True)
-        scrollable.setWidget(self.content_widget)
+        self._build_sections()
 
-        # composing root
-        self.root_layout.addWidget(scrollable, stretch=1)
-        self.root_layout.addWidget(FooterNav(self.app))
+        self.setLayout(self.root_layout)
 
+    def _build_sections(self):
+        self.team_creator = self._build_team_creator()
+        self.team_info = self._build_team_info()
+        self.draft_picker = self._build_draft_picker()
+        self.team_overview = self._build_roster_overview()
+        self.player_stats = self._build_player_stat_section()
+
+        self.content_layout.addWidget(self.team_creator)
+        self.content_layout.addWidget(self.team_info)
+        self.content_layout.addWidget(self.draft_picker)
+        self.content_layout.addWidget(self.team_overview)
+        self.content_layout.addWidget(self.player_stats)
+
+
+# -- BUILDERS --
 
     def _build_team_creator(self):
-        create_cont = QWidget()
+        self.team_creator_container = QWidget()
 
-        main_layout = QVBoxLayout(create_cont)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout = QVBoxLayout(self.team_creator_container)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(20)
 
         self.create_input = QLineEdit()
         self.create_input.setPlaceholderText("My Team...")
@@ -142,36 +138,38 @@ class TeamView(QWidget):
         create_layout.addWidget(create_btn, stretch=1)
         create_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        main_layout.addWidget(create_label)
-        main_layout.addSpacing(10)
-        main_layout.addLayout(create_layout)
+        layout.addWidget(create_label)
+        layout.addSpacing(10)
+        layout.addLayout(create_layout)
+        layout.addWidget(self._create_separator())
         
-        return create_cont
+        return self.team_creator_container
 
-    def _build_my_info(self):
-        info_cont = QWidget()
-        info_layout = QVBoxLayout(info_cont)
-        info_layout.setSpacing(15)
-        info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    def _build_team_info(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(25)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        team_label = QLabel(f"{self.team_name}")
-        team_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        team_label.setStyleSheet("""
+        self.team_name_label = QLabel("")
+        self.team_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.team_name_label.setStyleSheet("""
             font-size: 64px; 
             font-weight: bold; 
             color: #333; 
         """)
 
-        info_layout.addWidget(team_label)
-        info_layout.addWidget(self.status_label)
+        layout.addWidget(self.team_name_label)
+        layout.addWidget(self._create_separator())
 
-        return info_cont
+        return container
 
-    def _build_draft_pick(self):
-        pick_cont = QWidget()
+    def _build_draft_picker(self):
+        self.pick_container = QWidget()
 
-        main_layout = QVBoxLayout(pick_cont)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout = QVBoxLayout(self.pick_container)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(20)
 
         self.pick_input = QComboBox()
         player_names = [p["name"] for p in Session.player_scores]
@@ -180,25 +178,25 @@ class TeamView(QWidget):
         self.pick_input.setEditable(True)
         self.pick_input.setPlaceholderText("Blaz, MenaRD, Leshar...")
 
-        pick_group_layout = QVBoxLayout()
-        pick_group_layout.addWidget(self.pick_input)
+        grou_layout = QVBoxLayout()
+        grou_layout.addWidget(self.pick_input)
 
-        pick_group = QGroupBox("Pick a Player!")
-        pick_group.setLayout(pick_group_layout)
+        group = QGroupBox("Pick a Player!")
+        group.setLayout(grou_layout)
 
-        pick_label = QLabel("It's your turn to pick a player!")
-        pick_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        pick_label.setStyleSheet("""
+        label = QLabel("It's your turn to pick a player!")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("""
             font-size: 24px; 
             font-weight: bold; 
             color: #333; 
         """)
 
-        pick_btn = QPushButton("Pick")
-        pick_btn.setFixedWidth(100)
-        pick_btn.setFixedHeight(30)
-        pick_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        pick_btn.setStyleSheet("""
+        btn = QPushButton("Pick")
+        btn.setFixedWidth(100)
+        btn.setFixedHeight(30)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setStyleSheet("""
             QPushButton {
                 font-size: 12px;
                 background-color: #ff9d00;
@@ -211,46 +209,33 @@ class TeamView(QWidget):
                 background-color: #de8900;
             }
         """)
-        pick_btn.clicked.connect(self.pick_player)
+        btn.clicked.connect(self.pick_player)
 
         pick_layout = QHBoxLayout()
-        pick_layout.addWidget(pick_group, stretch=1)
-        pick_layout.addWidget(pick_btn, stretch=1)
+        pick_layout.addWidget(group, stretch=1)
+        pick_layout.addWidget(btn, stretch=1)
         pick_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        main_layout.addWidget(pick_label)
-        main_layout.addSpacing(10)
-        main_layout.addLayout(pick_layout)
+        layout.addWidget(label)
+        layout.addSpacing(10)
+        layout.addLayout(pick_layout)
+        layout.addWidget(self._create_separator())
         
-        return pick_cont
-    
-    def _build_my_team(self):
+        return self.pick_container
+
+    def _build_roster_overview(self):
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setSpacing(10)
 
-        # Player row
-        players_row = QHBoxLayout()
-        players_row.setSpacing(10)
-        players_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # player row
+        self.team_bar_layout = QHBoxLayout()
+        self.team_bar_layout.setSpacing(10)
+        self.team_bar_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        players = self.my_team_standings.get("players", []) if self.my_team_standings else []
-        players.sort(
-            key=lambda p: (
-                p["left_at"] is not None, 
-                -datetime.fromisoformat(p["left_at"]).timestamp() if p["left_at"] else 0
-            )
-        )
+        layout.addLayout(self.team_bar_layout)
+        layout.addWidget(self._create_separator())
 
-        for i in range(5):
-            if i < len(players):
-                slot = self._build_player_slot(players[i])
-            else:
-                slot = self._build_empty_player_slot()
-
-            players_row.addWidget(slot, stretch=1)
-
-        layout.addLayout(players_row)
         return container
 
     def _build_player_slot(self, player: dict):
@@ -325,138 +310,102 @@ class TeamView(QWidget):
 
         return slot
 
-    def _build_player_stat_list(self):
+    def _build_player_stat_section(self):
         container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(50, 0, 0, 0)
-        layout.setSpacing(30)
+        self.player_detail_layout = QVBoxLayout(container)
+        self.player_detail_layout.setContentsMargins(50, 0, 50, 0)
+        self.player_detail_layout.setSpacing(15)
+
+        return container
+
+    def _update_player_stat(self, player: dict):
+        # Clear previous stats
+        while self.player_detail_layout.count():
+            item = self.player_detail_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
 
         PLAYER_IMG_DIR = Path("app/client/assets/player_pictures")
         REGION_ICO_DIR = Path("app/client/assets/icons/flags")
 
-        players = self.my_team_standings.get("players", []) if self.my_team_standings else []
-        players.sort(
-            key=lambda p: (
-                p["left_at"] is not None, 
-                -datetime.fromisoformat(p["left_at"]).timestamp() if p["left_at"] else 0
-            )
-        )
-        for player in players:
-            if not player:
-                continue
+        name = player["id"]
+        region = player.get("region", "Unknown")
+        points = player["points"]
+        joined_at = player["joined_at"]
+        left_at = player["left_at"]
+        active = left_at is None
 
-            name = player["id"]
-            region = player.get("region", "Unknown")
-            points = player["points"]
-            joined_at = player["joined_at"]
-            left_at = player["left_at"]
-            active = left_at is None
+        # Row container
+        row = QFrame()
+        row.setFrameShape(QFrame.Shape.StyledPanel)
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
 
-            # row container
-            row = QFrame()
-            row.setObjectName("playerRow")  # unique identifier
+        # Player image
+        image = QLabel()
+        img_path = PLAYER_IMG_DIR / f"{name}.jpg"
+        if not img_path.exists():
+            img_path = PLAYER_IMG_DIR / "placeholder.png"
+        pixmap = QPixmap(str(img_path)).scaled(200, 200, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        image.setPixmap(pixmap)
+        layout.addWidget(image)
 
-            row.setStyleSheet("""
-                QFrame#playerRow {
-                    border: 2px solid #aaaaaa;
-                    border-radius: 4px;
-                }
-            """)
-            row_layout = QHBoxLayout(row)
-            row_layout.setContentsMargins(20, 20, 20, 20)
-            row_layout.setSpacing(10)
+        # Info column
+        info_col = QVBoxLayout()
+        info_col.setContentsMargins(0, 25, 0, 25)
 
-            # --- Player image ---
-            image = QLabel()
-            image.setFixedSize(200, 200)
-            image.setStyleSheet("border: 5px solid #333;")
+        region_img = REGION_ICO_DIR / f"{region}.png"
+        if not region_img.exists():
+            region_img = REGION_ICO_DIR / "placeholder.png"
 
-            img_path = PLAYER_IMG_DIR / f"{name}.jpg"
-            if not img_path.exists():
-                img_path = PLAYER_IMG_DIR / "placeholder.png"
+        info_label = QLabel(f"<b>{name}</b><br>{region} <img src='{region_img}' width='18' height='12'>")
+        info_label.setTextFormat(Qt.TextFormat.RichText)
+        info_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        info_col.addWidget(info_label)
 
-            pixmap = QPixmap(str(img_path))
-            image.setPixmap(
-                pixmap.scaled(
-                    200,
-                    200,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-            )
+        points_label = QLabel(f"Points: {points}")
+        points_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        info_col.addWidget(points_label)
 
-            info_col = QVBoxLayout()
-            info_col.setSpacing(0)
-            info_col.setContentsMargins(0,25,0,25)
+        joined_label = QLabel(f"Joined At: {joined_at.split('T')[0]}")
+        joined_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        info_col.addWidget(joined_label)
 
-            img_path = REGION_ICO_DIR / f"{region}.png"
-            if not img_path.exists():
-                img_path = REGION_ICO_DIR / "placeholder.png"
+        if not active:
+            left_label = QLabel(f"Left At: {left_at.split('T')[0]}")
+            left_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            info_col.addWidget(QLabel("Transferred"))
+            info_col.addWidget(left_label)
 
-            info_label = QLabel()
-            info_label.setTextFormat(Qt.TextFormat.RichText)
-            info_label.setText(
-                "<div style='line-height: 1.2;'>"
-                f"<span style='font-size:24px; font-weight: bold; color:#333;'>{name}</span><br/>"
-                f"<span style='font-size:16px; color:#777;'>{region}  </span>"
-                f"<img src='{img_path}' width='18' height='12'> "
-                "</div"
-            )
-            info_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        layout.addLayout(info_col)
+        self.player_detail_layout.addWidget(row)
 
-            points_label = QLabel(f"Points: {points}")
-            points_label.setStyleSheet("color: #333; font-size: 20px;")
-            points_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
 
-            joined_label = QLabel(f"Joined At: {joined_at.split("T")[0]}")
-            joined_label.setStyleSheet("color: #333; font-size: 20px;")
-            joined_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
-
-            info_col.addWidget(info_label)
-            info_col.addWidget(points_label)
-            info_col.addWidget(joined_label)
-
-            if not active:
-                transferred = QLabel("Transferred") 
-                transferred.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
-                left_label = QLabel(f"Left At: {left_at.split("T")[0]}")
-                left_label.setStyleSheet("color: #333; font-size: 20px;")
-                left_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
-
-                info_col.addWidget(transferred)
-                info_col.addWidget(left_label)
-
-            # --- Assemble row ---
-            row_layout.addWidget(image)
-            row_layout.addLayout(info_col, stretch=1)
-            row_layout.addStretch()
-
-            layout.addWidget(row)
-        
-        return container
-
+# -- BUTTON METHODS --
 
     def pick_player(self):
         player = self.pick_input.currentText()
         print("pick_player: CLICK")
 
         if not player:
-            self._set_status("Please enter a player name.", status_type="e")
+            self._set_status("Please enter a player name.", 2)
             return
         
         if not any(p["name"] == player for p in Session.player_scores):
-            self._set_status(f"{player} not found. Names are case sensitive!", status_type="e")
+            self._set_status(f"{player} not found. Names are case sensitive!", 2)
             return
         
         def _success(success):
             if success:
-                self._refresh_view()
-                self._set_status(f"Welcome {player} to {self.team_name}!", status_type="s")
+                self._refresh()
+                self._set_status(f"Welcome {player} to {self.my_team_name}!", 1)
         
         def _error(error):
-            self._set_status(f"Failed to pick player: {error}", status_type="e")
+            self._set_status(f"Failed to pick player: {error}", 2)
         
-        self._set_status("Picking player...", status_type="p")
+        self._set_status("Picking player...", 0)
         run_async(
             parent_widget= self.content_widget,
             fn= Session.team_service.pick_player,
@@ -470,17 +419,17 @@ class TeamView(QWidget):
         print("create_team: CLICK")
 
         if not team_name:
-            self._set_status("Please enter a team name.", status_type="e")
+            self._set_status("Please enter a team name.", 2)
         
         def _success(success):
             if success:
-                self._refresh_view()
-                self._set_status("Team created successfuly!", status_type="s")
+                self._refresh()
+                self._set_status("Team created successfuly!", 1)
         
         def _error(error):
-            self._set_status(f"Failed to create team: {error}", status_type="e")
+            self._set_status(f"Failed to create team: {error}", 2)
         
-        self._set_status("Creating team...", status_type="p")
+        self._set_status("Creating team...", 0)
         run_async(
             parent_widget= self.content_widget,
             fn = Session.team_service.create_team,
@@ -489,26 +438,67 @@ class TeamView(QWidget):
             on_error=_error
         )
 
-    def _refresh_view(self):
-        self._clear_layout(self.layout())
+
+# -- LAYOUT STUFF --
+
+    def _refresh(self):
         Session.init_aesthetics()
-        self._build_main()
 
-    def _clear_layout(self, layout):
-        if layout is None:
-            return
+        self.status_label.setText("")
 
-        while layout.count():
-            item = layout.takeAt(0)
+        # grabbing team aesthetics
+        self.my_username = Session.user
+        self.my_user_id = Session.user_id
+        self.my_team_name = Session.current_team_name
+        self.my_next_pick = Session.next_pick
+        self.my_team_standings = Session.my_team_standings
+        self.is_draft_complete = Session.draft_complete
+        self.is_league_locked = Session.is_league_locked
 
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-                continue
+        self._update_view()
 
-            child_layout = item.layout()
-            if child_layout is not None:
-                self._clear_layout(child_layout)
+    def _update_view(self):
+        self._update_player_slots()
+
+        if bool(self.my_team_name):
+            self.team_creator.setVisible(False)
+            self.team_info.setVisible(True)
+            self.team_overview.setVisible(True)
+        else:
+            self.team_creator.setVisible(True)
+            self.team_info.setVisible(False)
+            self.team_overview.setVisible(False)
+
+        self.draft_picker.setVisible(
+            bool(self.my_team_name) and not self.is_draft_complete and self.my_username == self.my_next_pick and self.is_league_locked
+        )
+
+        self.team_name_label.setText(f"{self.my_team_name}")
+
+    def _update_player_slots(self):
+        players = self.my_team_standings.get("players", []) if self.my_team_standings else []
+        players.sort(key=lambda p: (p["left_at"] is not None, -datetime.fromisoformat(p["left_at"]).timestamp() if p["left_at"] else 0))
+
+        # clear old slots
+        for i in reversed(range(self.team_bar_layout.count())):
+            widget = self.team_bar_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        self.player_buttons = []
+
+        for i in range(5):
+            if i < len(players):
+                slot = self._build_player_slot(players[i])
+                slot.mousePressEvent = lambda e, p=players[i]: self._update_player_stat(p)
+                self.player_buttons.append(slot)
+            else:
+                slot = self._build_empty_player_slot()
+            self.team_bar_layout.addWidget(slot, stretch=1)
+
+        # default to first player
+        if players:
+            self._update_player_stat(players[0])
 
     def _create_separator(self):
         separator = QFrame()
@@ -521,13 +511,12 @@ class TeamView(QWidget):
             QSizePolicy.Policy.Fixed
         )
         return separator
-
-    def _set_status(self, msg, status_type=None):
+    
+    def _set_status(self, msg, code=0):
+        colors = {0: "#333", 1: "#2e7d32", 2: "#cc0000"}
+        self.status_label.setStyleSheet(f"color: {colors.get(code, '#333')};")
         self.status_label.setText(msg)
 
-        if status_type == "s":
-            color = "#2e7d32"
-        elif status_type == "e":
-            color = "#cc0000"
-        else:
-            color = "#333333"
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refresh()

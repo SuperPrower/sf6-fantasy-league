@@ -25,7 +25,7 @@ class LeagueView(QWidget):
         super().__init__()
         self.app = app
 
-        # clears then builds ui
+        # build ui then update
         self._build_static()
         self._refresh()
 
@@ -94,10 +94,10 @@ class LeagueView(QWidget):
         )
 
         # draft controls
-        self.draft_controls = self._build_draft_controls()
+        self.draft_controls = self._build_owner_draft_controls()
 
         # forfeit controls
-        self.forfeit_controls = self._build_forfeit_controls()
+        self.forfeit_controls = self._build_owner_forfeit_controls()
 
         layout.addWidget(self.owner_title)
         layout.addLayout(self.draft_controls)
@@ -164,9 +164,6 @@ class LeagueView(QWidget):
 
         return leave_btn
 
-
-# -- IN LEAGUE INFO --
-
     def _build_league_info(self):
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -213,9 +210,6 @@ class LeagueView(QWidget):
 
         return container
 
-
-# -- IN DRAFT INFO --
-
     def _build_draft_info(self):
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -223,10 +217,16 @@ class LeagueView(QWidget):
         layout.setContentsMargins(0,0,0,0)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        info = QLabel("Draft Order")
+        info = QLabel("Draft Information")
         info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         info.setStyleSheet(
             "font-size: 24px; font-weight: bold; color: #333; padding-bottom: 10px;"
+        )
+
+        self.provisional_order = QLabel("")
+        self.provisional_order.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.provisional_order.setStyleSheet(
+            "font-size: 20px; color: #333;"
         )
 
         self.draft_order_label = QLabel("")
@@ -242,15 +242,13 @@ class LeagueView(QWidget):
         )
 
         layout.addWidget(info)
+        layout.addWidget(self.provisional_order)
         layout.addWidget(self.draft_order_label)
         layout.addWidget(self.next_pick_label)
         layout.addWidget(self._create_separator())
 
         container.setVisible(False)
         return container
-
-
-# -- NO LEAGUE CONTROLS --
 
     def _build_create_and_join_controls(self):
         # create league
@@ -328,10 +326,7 @@ class LeagueView(QWidget):
 
         return layout
 
-
-# -- OWNER CONTROLS --
-
-    def _build_draft_controls(self):
+    def _build_owner_draft_controls(self):
         layout = QHBoxLayout()
 
         group = QGroupBox("Assign Draft Order")
@@ -387,7 +382,7 @@ class LeagueView(QWidget):
 
         return draft_row
 
-    def _build_forfeit_controls(self):
+    def _build_owner_forfeit_controls(self):
         self.forfeit_input = QLineEdit()
         self.forfeit_input.setPlaceholderText("Loser must...")
 
@@ -515,7 +510,7 @@ class LeagueView(QWidget):
         def _error(error):
             self._set_status(f"Failed to assign draft order: {error}", code=2)
 
-        self._set_status("Assignign draft order...")
+        self._set_status("Assigning draft order...")
         run_async(
             parent_widget= self.content_widget,
             fn=Session.league_service.assign_draft_order,
@@ -575,14 +570,17 @@ class LeagueView(QWidget):
     def _refresh(self):
         Session.init_aesthetics()
 
+        self.status_label.setText("")
+
         # grabbing league aesthetics
         self.my_league_name = Session.current_league_name
         self.my_league_id = Session.current_league_id
         self.my_league_forfeit = Session.league_forfeit
         self.my_capacity = f"{len(Session.leaguemates)}/5"
         self.my_leaguemates = [d['manager_name'] for d in Session.leaguemates]
-        self.my_draft_order = Session.draft_order
+        self.my_draft_order = Session.draft_order or None
         self.my_next_pick = Session.next_pick
+        self.my_locked = Session.is_league_locked
         self.is_owner = Session.is_league_owner
         self.is_draft_complete = Session.draft_complete
 
@@ -610,15 +608,23 @@ class LeagueView(QWidget):
             self.forfeit_label.setText(
             f'<span style="font-weight:bold; color:#bf0000;">Forfeit not yet set.</span>'
         ) 
-        
+
         # draft info
-        has_draft = bool(self.my_draft_order)
-        draft_complete = bool(self.is_draft_complete)
-        self.draft_info_container.setVisible(has_draft)
-        self.draft_info_container.setVisible(not draft_complete)
-        if has_draft:
+        self.draft_info_container.setVisible(True)
+
+        self.provisional_order.setVisible(True)
+        self.draft_order_label.setVisible(False)
+        self.next_pick_label.setVisible(False)
+        self.provisional_order.setText(f"Provisional Draft Order: {', '.join(self.my_draft_order) if self.my_draft_order else 'Not yet set.'}")
+
+        if bool(self.my_draft_order) and bool(self.my_locked):
             self.draft_order_label.setText("Draft Order: "+", ".join(self.my_draft_order))
             self.next_pick_label.setText(f"<b>Next to Pick:</b> {self.my_next_pick}")
+            self.draft_order_label.setVisible(True)
+            self.next_pick_label.setVisible(True)
+            self.provisional_order.setVisible(False)
+        if bool(self.is_draft_complete):
+            self.draft_info_container.setVisible(False)
 
         # conditional controls
         self.owner_controls.setVisible(self.is_owner)
@@ -626,14 +632,8 @@ class LeagueView(QWidget):
         self.in_league_display.setVisible(self.my_league_id is not None)
 
     def _set_status(self, msg, code=0):
-        if code == 1:
-            color = "#2e7d32"
-        elif code == 2:
-            color = "#cc0000"
-        else:
-            color = "#333333"
-
-        self.status_label.setStyleSheet(f"color: {color};")
+        colors = {0: "#333", 1: "#2e7d32", 2: "#cc0000"}
+        self.status_label.setStyleSheet(f"color: {colors.get(code, '#333')};")
         self.status_label.setText(msg)
 
     def _create_separator(self):
@@ -647,3 +647,7 @@ class LeagueView(QWidget):
             QSizePolicy.Policy.Fixed
         )
         return separator
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refresh()

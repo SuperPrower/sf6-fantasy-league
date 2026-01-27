@@ -58,8 +58,8 @@ class LoginView(QWidget):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setFixedHeight(30)
 
-        self.email_input.returnPressed.connect(self.attempt_login)
-        self.password_input.returnPressed.connect(self.attempt_login)
+        self.email_input.returnPressed.connect(self._attempt_login)
+        self.password_input.returnPressed.connect(self._attempt_login)
 
         # back to signup page
         return_to_login = QPushButton("New user?")
@@ -82,7 +82,7 @@ class LoginView(QWidget):
         self.submit_button = QPushButton("Login")
         self.submit_button.setFixedHeight(40)
         self.submit_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.submit_button.clicked.connect(self.attempt_login)
+        self.submit_button.clicked.connect(self._attempt_login)
         self.submit_button.setStyleSheet(
             """
             QPushButton {
@@ -150,7 +150,7 @@ class LoginView(QWidget):
         self.password_input.setEnabled(enabled)
         self.submit_button.setEnabled(enabled)
     
-    def attempt_login(self):
+    def _attempt_login(self):
         '''
         Attempts to login a user with the provided email and password.
         Initialises the Session class as well as storing the access & refresh
@@ -183,10 +183,18 @@ class LoginView(QWidget):
             self.status_label.setStyleSheet("color: #2e7d32;")
 
             if self.app:
-                QTimer.singleShot(2000, self.app.show_home_view)
+                QTimer.singleShot(2000, self._login_success)
 
         except Exception as e:
             self.status_label.setText(f"Login failed: {e}")
             self.status_label.setStyleSheet("color: #cc0000;")
             self._set_inputs_enabled(True)
             QApplication.restoreOverrideCursor()
+
+    def _login_success(self):
+        self.status_label.setText("")
+        self.email_input.setText("")
+        self.password_input.setText("")
+        self._set_inputs_enabled(True)
+
+        self.app.show_home_view()

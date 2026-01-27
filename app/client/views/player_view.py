@@ -33,6 +33,7 @@ class PlayerView(QWidget):
         self.setLayout(self.root_layout)
 
         # grab player info then cache it
+        Session.init_players()
         self.player_scores = Session.player_scores
 
         self.SORT_KEYS = {

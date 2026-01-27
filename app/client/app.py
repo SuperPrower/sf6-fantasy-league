@@ -1,6 +1,6 @@
 import webbrowser
 
-from PyQt6.QtWidgets import QMainWindow, QApplication
+from PyQt6.QtWidgets import QMainWindow, QApplication, QStackedWidget
 
 from PyQt6.QtGui import QKeySequence, QShortcut
 
@@ -41,6 +41,18 @@ class FantasyApp(QMainWindow):
         self.setWindowTitle("SF6 Fantasy League")
         self.setFixedSize(1000, 800)
 
+        self.stack = QStackedWidget()
+        self.setCentralWidget(self.stack)
+
+        # view placeholders
+        self.login_view = None
+        self.signup_view = None
+        self.home_view = None
+        self.league_view = None
+        self.team_view = None
+        self.player_view = None
+        self.leaderboard_view = None
+
         if self._try_restore_session():
             self.show_home_view()
         else:
@@ -65,59 +77,74 @@ class FantasyApp(QMainWindow):
             AppStore.clear()
             return False
     
+
     def show_login_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.login_view = LoginView(app=self)
-            self.setCentralWidget(self.login_view)
+            if self.login_view is None:
+                self.login_view = LoginView(app=self)
+                self.stack.addWidget(self.login_view)
+            self.stack.setCurrentWidget(self.login_view)
         finally:
             QApplication.restoreOverrideCursor()
 
     def show_signup_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.signup_view = SignupView(app=self)
-            self.setCentralWidget(self.signup_view)
+            if self.signup_view is None:
+                self.signup_view = SignupView(app=self)
+                self.stack.addWidget(self.signup_view)
+            self.stack.setCurrentWidget(self.signup_view)
         finally:
             QApplication.restoreOverrideCursor()
 
     def show_home_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.home_view = HomeView(app=self)
-            self.setCentralWidget(self.home_view)
+            if self.home_view is None:
+                self.home_view = HomeView(app=self)
+                self.stack.addWidget(self.home_view)
+            self.stack.setCurrentWidget(self.home_view)
         finally:
             QApplication.restoreOverrideCursor()
 
     def show_league_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.league_view = LeagueView(app=self)
-            self.setCentralWidget(self.league_view)
+            if self.league_view is None:
+                self.league_view = LeagueView(app=self)
+                self.stack.addWidget(self.league_view)
+            self.stack.setCurrentWidget(self.league_view)
         finally:
             QApplication.restoreOverrideCursor()
 
     def show_team_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.team_view = TeamView(app=self)
-            self.setCentralWidget(self.team_view)
+            if self.team_view is None:
+                self.team_view = TeamView(app=self)
+                self.stack.addWidget(self.team_view)
+            self.stack.setCurrentWidget(self.team_view)
         finally:
             QApplication.restoreOverrideCursor()
 
     def show_players_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.player_view = PlayerView(app=self)
-            self.setCentralWidget(self.player_view)
+            if self.player_view is None:
+                self.player_view = PlayerView(app=self)
+                self.stack.addWidget(self.player_view)
+            self.stack.setCurrentWidget(self.player_view)
         finally:
             QApplication.restoreOverrideCursor()
 
     def show_leaderboards_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.leaderboard_view = LeaderboardView(app=self)
-            self.setCentralWidget(self.leaderboard_view)
+            if self.leaderboard_view is None:
+                self.leaderboard_view = LeaderboardView(app=self)
+                self.stack.addWidget(self.leaderboard_view)
+            self.stack.setCurrentWidget(self.leaderboard_view)
         finally:
             QApplication.restoreOverrideCursor()
 
@@ -131,4 +158,17 @@ class FantasyApp(QMainWindow):
         Session.reset()
         AuthStore.clear()
         AppStore.clear()
+
+        self.stack = QStackedWidget()
+        self.setCentralWidget(self.stack)
+
+        # view placeholders
+        self.login_view = None
+        self.signup_view = None
+        self.home_view = None
+        self.league_view = None
+        self.team_view = None
+        self.player_view = None
+        self.leaderboard_view = None
+
         self.show_login_view()

@@ -34,6 +34,7 @@ class Session:
     league_forfeit = None
     is_league_owner = False
     leaguemates = []
+    is_league_locked = False
     draft_order = []
     next_pick = None
     draft_complete = False
@@ -41,7 +42,7 @@ class Session:
     # cached team info
     current_team_id = None
     current_team_name = None
-    my_team_data = []
+    my_team_standings = []
 
     # cached leaderboard info
     favourite_players = []
@@ -59,7 +60,6 @@ class Session:
         # system state info
         try:
             system_state = cls.auth_base.get_system_state()
-            cls.player_scores = cls.leaderboard_service.get_players()
             cls.blocking_state = system_state["blocking"]
             cls.banner_message = system_state["banner_message"]
             cls.warning_message = system_state["warning_message"]
@@ -108,6 +108,7 @@ class Session:
             cls.league_forfeit = league_data["forfeit"] or None
             cls.is_league_owner = True if league_data["league_owner"] == cls.user_id else False
             cls.leaguemates = league_data["leaguemates"]
+            cls.is_league_locked = league_data["locked"]
             try:
                 cls.draft_order = league_data["draft_order"]
                 cls.next_pick = league_data["next_pick"]
@@ -123,6 +124,7 @@ class Session:
             cls.league_forfeit = None
             cls.is_league_owner = False
             cls.leaguemates = []
+            cls.is_league_locked = False
             cls.draft_order = []
             cls.next_pick = None
             cls.draft_complete = False
@@ -138,6 +140,13 @@ class Session:
             cls.current_team_id = None
             cls.current_team_name = None
             cls.my_team_standings = None
+
+    @classmethod
+    def init_players(cls):
+        try:
+            cls.player_scores = cls.leaderboard_service.get_players()
+        except Exception:
+            cls.player_scores = []
 
     @classmethod
     def init_leaderboards(cls):
@@ -188,6 +197,7 @@ class Session:
         cls.league_forfeit = None
         cls.is_league_owner = False
         cls.leaguemates = []
+        cls.is_league_locked = False
         cls.draft_order = []
         cls.next_pick = None
         cls.draft_complete = False

@@ -80,17 +80,20 @@ class LeagueService():
             "league_name": league["league_name"],
             "forfeit": league.get("forfeit"),
             "league_owner": league["league_owner"],
-            "leaguemates": mates
+            "leaguemates": mates,
+            "locked": league.get("locked")
         }
 
         # only include draft info if draft has begun i.e. locked is true
-        if league.get("locked"):
+        try:
             result.update({
                 "draft_order": [manager_map[uid] for uid in league["draft_order"]],
                 "next_pick": manager_map[league["pick_turn"]],
                 "pick_direction": league.get("pick_direction"),
                 "draft_complete": league.get("draft_complete")
             })
+        except:
+            pass
 
         return result
 

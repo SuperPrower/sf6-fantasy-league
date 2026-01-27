@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from functools import partial
+
 from PyQt6.QtWidgets import (
     QWidget, 
     QLabel, 
@@ -32,66 +34,66 @@ class LeaderboardView(QWidget):
         super().__init__()
         self.app = app
 
-        # root layout: defined here to use in other private methods
+        # build static ui then update
+        self._build_static()
+        self._refresh()
+
+    def _build_static(self):
         self.root_layout = QVBoxLayout()
         self.root_layout.setContentsMargins(0, 0, 0, 0)
         self.root_layout.setSpacing(0)
-        self.setLayout(self.root_layout)
 
-        # grab leaderboard data
-        Session.init_leaderboards()
-        Session.init_favourites()
-        self.leaguemate_data = Session.leaguemate_standings
-        self.favourite_data = Session.favourite_standings
-        self.my_league = Session.current_league_name
+        self.header = HeaderBar(self.app)
+        self.footer = FooterNav(self.app)
 
-        # clears then builds ui
-        self._refresh_view()
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
 
-
-    def _build_main(self):
-        self.root_layout.addWidget(HeaderBar(self.app))
-
-        # grabbing cached data
-        self.username = Session.user
-        self.user_id = Session.user_id
-        self.team_name = Session.current_team_name
-        self.next_pick = Session.next_pick
-        self.draft_complete = Session.draft_complete
-        self.my_team_data = Session.my_team_data
-
-
-        # main content
         self.content_widget = QWidget()
 
-        content_layout = QVBoxLayout(self.content_widget)
-        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
-        content_layout.setContentsMargins(40, 35, 40, 35)
-        content_layout.setSpacing(35)
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+        self.content_layout.setContentsMargins(50, 35, 50, 35)
+        self.content_layout.setSpacing(10)
+
+        self.scroll.setWidget(self.content_widget)
+
+        self.status_label = QLabel("")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setFixedHeight(25)
+        self.status_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+            }
+        """)
+
+        self.root_layout.addWidget(self.header)
+        self.root_layout.addWidget(self.scroll, stretch=1)
+        self.root_layout.addWidget(self.status_label)
+        self.root_layout.addWidget(self.footer)
+
+        self._build_sections()
+
+        self.setLayout(self.root_layout)
+
+    def _build_sections(self):
+        self.info = self._build_info()
+        self.leaguemate_container = self._build_leaguemates()
+        self.favourite_container = self._build_favourites()
 
 
-        # add to main widget here
-        content_layout.addWidget(self._build_info())
-        content_layout.addWidget(self._create_separator())
-        content_layout.addWidget(self._build_league_teams())
-        content_layout.addWidget(self._create_separator())
-        content_layout.addWidget(self._build_favourites())
+        self.content_layout.addWidget(self.info)
+        self.content_layout.addWidget(self.leaguemate_container)
+        self.content_layout.addWidget(self.favourite_container)
 
-        # scrollable if required
-        scrollable = QScrollArea()
-        scrollable.setWidgetResizable(True)
-        scrollable.setWidget(self.content_widget)
 
-        # composing root
-        self.root_layout.addWidget(scrollable, stretch=1)
-        self.root_layout.addWidget(FooterNav(self.app))
-
+# -- BUILDERS --
 
     def _build_info(self):
-        info_cont = QWidget()
-        info_layout = QVBoxLayout(info_cont)
-        info_layout.setSpacing(15)
-        info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(20)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         leaderboards = QLabel(f"Leaderboards")
         leaderboards.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -101,102 +103,39 @@ class LeaderboardView(QWidget):
             color: #333; 
         """)
 
-        info_layout.addWidget(leaderboards)
+        layout.addWidget(leaderboards)
+        layout.addWidget(self._create_separator())
 
-        return info_cont
+        return container
     
-    def _build_league_teams(self):
-        self.leaguemate_data_sorted = sorted(self.leaguemate_data, key=lambda t: t["total_points"])
-
+    def _build_leaguemates(self):
         container = QWidget()
         layout = QVBoxLayout(container)
-        layout.setSpacing(15)
-        
-        leaguemates = QLabel(f"Standings within {self.my_league}")
-        leaguemates.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        leaguemates.setStyleSheet("""
-            font-size: 32px; 
-            font-weight: bold; 
-            color: #333; 
-        """)
+        layout.setSpacing(20)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        layout.addWidget(leaguemates)
+        self.leaguemate_layout = QVBoxLayout()
+        self.leaguemate_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
-        for team in self.leaguemate_data_sorted:
-            # team box
-            team_frame = QFrame()
-            team_frame.setObjectName("teamFrame")  # unique identifier
-            team_frame.setStyleSheet("""
-                QFrame#teamFrame {
-                    border: 2px solid #aaaaaa;
-                    border-radius: 4px;
-                }
-            """)
-            
-            team_data = QVBoxLayout(team_frame)
-            team_data.setSpacing(10)
-            team_data.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addLayout(self.leaguemate_layout)
+        layout.addWidget(self._create_separator())
 
-            # player row
-            players_row = QHBoxLayout()
-            players_row.setSpacing(10)
-            players_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            owner = QLabel(f"Owner: {team["user_name"]}")
-            name = QLabel(f"Team Name: {team["team_name"]}")
-            points = QLabel(f"Total Points: {team["total_points"]}")
-            
-            team_players = team["players"]
-
-            for i in range(5):
-                if i < len(team_players):
-                    slot = self._build_player_slot(team_players[i])
-                else:
-                    slot = self._build_empty_player_slot()
-
-                players_row.addWidget(slot, stretch=1)
-
-            team_data.addWidget(owner)
-            team_data.addWidget(name)
-            team_data.addWidget(points)
-            team_data.addLayout(players_row)
-            
-            layout.addWidget(team_frame)
-        
         return container
 
     def _build_favourites(self):
-
         container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setSpacing(15)
-        
-        favourites = QLabel(f"Favourite users")
-        favourites.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        favourites.setStyleSheet("""
+
+        main_layout = QVBoxLayout(container)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.setSpacing(15)
+
+        title_label = QLabel(f"Favourite users")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet("""
             font-size: 32px; 
             font-weight: bold; 
             color: #333; 
         """)
-
-        layout.addWidget(favourites)
-
-        self.status_label = QLabel("")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("""
-            QLabel {
-                font-size: 12px;
-                color: #cc0000;
-            }
-        """)
-        self._set_status("Check your favourite users here!")
-
-        layout.addWidget(self.status_label)
-
-        create_cont = QWidget()
-
-        main_layout = QVBoxLayout(create_cont)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.add_fav_input = QLineEdit()
         self.add_fav_input.setPlaceholderText("User ID")
@@ -239,62 +178,14 @@ class LeaderboardView(QWidget):
         add_layout.addWidget(btn, stretch=1)
         add_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        main_layout.addSpacing(15)
-        main_layout.addWidget(add_fav_label)
-        main_layout.addSpacing(10)
+        self.favourite_display = QVBoxLayout()
+        self.favourite_display.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+
+        main_layout.addWidget(title_label)
         main_layout.addLayout(add_layout)
+        main_layout.addWidget(self._create_separator())
+        main_layout.addLayout(self.favourite_display)
 
-        layout.addWidget(create_cont)
-        
-        if self.favourite_data:
-            self.favourite_data_sorted = sorted(self.favourite_data, key=lambda t: t["total_points"])
-            for team in self.favourite_data_sorted:
-                # team box
-                team_frame = QFrame()
-                team_frame.setObjectName("teamFrame")  # unique identifier
-                team_frame.setStyleSheet("""
-                    QFrame#teamFrame {
-                        border: 2px solid #aaaaaa;
-                        border-radius: 4px;
-                    }
-                """)
-                
-                team_data = QVBoxLayout(team_frame)
-                team_data.setSpacing(10)
-                team_data.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                # player row
-                players_row = QHBoxLayout()
-                players_row.setSpacing(10)
-                players_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                owner = QLabel(f"Owner: {team["user_name"]}")
-                owner_id = QLabel(f"Owner ID: {team["user_id"]}")
-                name = QLabel(f"Team Name: {team["team_name"]}")
-                points = QLabel(f"Total Points: {team["total_points"]}")
-
-                remove = QPushButton("Remove")
-                remove.setFixedSize(60, 40)
-                remove.clicked.connect(lambda: self.remove_favourite(team["user_id"]))
-                
-                team_players = team["players"]
-
-                for i in range(5):
-                    if i < len(team_players):
-                        slot = self._build_player_slot(team_players[i])
-                    else:
-                        slot = self._build_empty_player_slot()
-
-                    players_row.addWidget(slot, stretch=1)
-
-                team_data.addWidget(owner)
-                team_data.addWidget(name)
-                team_data.addWidget(points)
-                team_data.addWidget(remove)
-                team_data.addLayout(players_row)
-                
-                layout.addWidget(team_frame)
-        
         return container
 
     def _build_player_slot(self, player: dict):
@@ -368,56 +259,163 @@ class LeaderboardView(QWidget):
 
         return slot
 
+    def _build_team_widget(self, team: dict) -> QWidget:
+        """
+        Builds a QFrame representing one team in the leaderboard.
+        """
+        team_frame = QFrame()
+        team_frame.setObjectName("teamFrame")
+        team_frame.setStyleSheet("""
+            QFrame#teamFrame {
+                border: 2px solid #aaaaaa;
+                border-radius: 4px;
+            }
+        """)
+        
+        layout = QVBoxLayout(team_frame)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Team info labels
+        owner_label = QLabel(f"Owner: {team['user_name']}")
+        name_label = QLabel(f"Team Name: {team['team_name']}")
+        points_label = QLabel(f"Total Points: {team['total_points']}")
+
+        layout.addWidget(owner_label)
+        layout.addWidget(name_label)
+        layout.addWidget(points_label)
+
+        # Player row
+        player_row = QHBoxLayout()
+        player_row.setSpacing(8)
+        player_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        players = team.get("players", [])
+
+        for i in range(5):
+            if i < len(players):
+                slot = self._build_player_slot(players[i])
+            else:
+                slot = self._build_empty_player_slot()
+            player_row.addWidget(slot, stretch=1)
+
+        layout.addLayout(player_row)
+        return team_frame
+
+    def _build_favourite_widget(self, team: dict) -> QWidget:
+        """
+        Builds a single favourite team row with remove button.
+        """
+        fav_frame = QFrame()
+        fav_frame.setObjectName("favFrame")
+        fav_frame.setStyleSheet("""
+            QFrame#favFrame {
+                border: 2px solid #aaaaaa;
+                border-radius: 4px;
+            }
+        """)
+
+        layout = QVBoxLayout(fav_frame)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Info labels
+        owner_label = QLabel(f"Owner: {team['user_name']}")
+        name_label = QLabel(f"Team Name: {team['team_name']}")
+        points_label = QLabel(f"Total Points: {team['total_points']}")
+
+        layout.addWidget(owner_label)
+        layout.addWidget(name_label)
+        layout.addWidget(points_label)
+
+        # Remove button
+        remove_btn = QPushButton("Remove")
+        remove_btn.setFixedSize(60, 40)
+        remove_btn.clicked.connect(partial(self.remove_favourite, team["user_id"]))
+        layout.addWidget(remove_btn)
+
+        # Player row
+        player_row = QHBoxLayout()
+        player_row.setSpacing(8)
+        player_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        players = team.get("players", [])
+        for i in range(5):
+            if i < len(players):
+                slot = self._build_player_slot(players[i])
+            else:
+                slot = self._build_empty_player_slot()
+            player_row.addWidget(slot, stretch=1)
+
+        layout.addLayout(player_row)
+        return fav_frame
+
+
+# -- BUTTON METHODS --
 
     def add_favourite(self):
         print("add_favourite: CLICK")
         fav = self.add_fav_input.text().strip()
 
         if not fav:
-            self._set_status("Please enter a user ID.", status_type="e")
+            self._set_status("Please enter a user ID.", 2)
 
         try:
             AppStore.append("favourites", fav)
-            self._set_status("Favourite added!", status_type="s")
-            Session.init_favourites()
-            self.favourite_data = Session.favourite_standings
-            self._refresh_view()
+            self._set_status("Favourite added!", 1)
+            self.add_fav_input.setText("")
+            self._refresh()
 
         except Exception as e:
-            self._set_status(f"Unable to add favourite: {e}", status_type="e")
+            self._set_status(f"Unable to add favourite: {e}", 2)
 
     def remove_favourite(self, user_id):
         try:
             AppStore.remove("favourites", user_id)
-            self._set_status("Favourite removed!")
-            Session.init_favourites()
-            self.favourite_data = Session.favourite_standings
-            self._refresh_view()
+            self._set_status("Favourite removed!", 1)
+            self._refresh()
         except Exception as e:
-            self._set_status(f"Unable to remove favourite: {e}", status_type="e")
+            self._set_status(f"Unable to remove favourite: {e}", 2)
 
 
-    def _refresh_view(self):
-        self._clear_layout(self.layout())
-        Session.init_aesthetics()
+# -- LAYOUT STUFF --
+
+    def _refresh(self):
         Session.init_leaderboards()
-        self._build_main()
+        Session.init_favourites()
 
-    def _clear_layout(self, layout):
-        if layout is None:
-            return
+        self.status_label.setText("")
 
-        while layout.count():
-            item = layout.takeAt(0)
+        self.my_username = Session.user
+        self.my_user_id = Session.user_id
+        self.leaguemate_data = Session.leaguemate_standings
+        self.favourite_data = Session.favourite_standings
+        self.my_league = Session.current_league_name
 
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-                continue
+        self._update_view()
 
-            child_layout = item.layout()
-            if child_layout is not None:
-                self._clear_layout(child_layout)
+    def _update_view(self):
+        self._update_leaguemates()
+        self._update_favourites()
+
+    def _update_leaguemates(self):
+        for i in reversed(range(self.leaguemate_layout.count())):
+            widget = self.leaguemate_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        for team in sorted(self.leaguemate_data, key=lambda t: t["total_points"], reverse=True):
+            team_widget = self._build_team_widget(team)
+            self.leaguemate_layout.addWidget(team_widget)
+
+    def _update_favourites(self):
+        for i in reversed(range(self.favourite_display.count())):
+            widget = self.favourite_display.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        if self.favourite_data:
+            for team in sorted(self.favourite_data, key=lambda t: t["total_points"], reverse=True):
+                fav_widget = self._build_favourite_widget(team)
+                self.favourite_display.addWidget(fav_widget)
 
     def _create_separator(self):
         separator = QFrame()
@@ -431,14 +429,11 @@ class LeaderboardView(QWidget):
         )
         return separator
 
-    def _set_status(self, msg, status_type=None):
+    def _set_status(self, msg, code=0):
+        colors = {0: "#333", 1: "#2e7d32", 2: "#cc0000"}
+        self.status_label.setStyleSheet(f"color: {colors.get(code, '#333')};")
         self.status_label.setText(msg)
 
-        if status_type == "s":
-            color = "#2e7d32"
-        elif status_type == "e":
-            color = "#cc0000"
-        else:
-            color = "#333333"
-
-        self.status_label.setStyleSheet(f"color: {color};")
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refresh()
