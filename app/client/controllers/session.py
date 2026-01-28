@@ -1,5 +1,7 @@
 from packaging import version
 
+from datetime import datetime, timedelta
+
 from app.services.app_store import AppStore
 from app.services.leaderboard_service import LeaderboardService
 from app.services.team_service import TeamService
@@ -12,78 +14,55 @@ class Session:
     VERSION = "1.0.0"
 
     # authenticated supabase session
-    auth_base = None
+    auth_base                               = None
 
     # username and user id
-    user = None
-    user_id = None
+    user                                    = None
+    user_id                                 = None
 
     '''
     cached system state info
     blocking defaults True: block everything if connection fails
     '''
-    blocking_state = True
-    warning_message = None
-    banner_message = None
-    last_live_scores = None
-    min_version = VERSION
+    warning_message                         = None
+    banner_message                          = None
+    last_live_scores                        = None
+    blocking_state                          = True
+    min_version                             = VERSION
 
     # cached league info
-    league_data_grabbed_at = None
-    current_league_id = None
-    current_league_name = None
-    league_forfeit = None
-    is_league_owner = False
-    leaguemates = []
-    is_league_locked = False
-    draft_order = []
-    next_pick = None
-    draft_complete = False
+    current_league_id                       = None
+    current_league_name                     = None
+    league_forfeit                          = None
+    leaguemates                             = None
+    draft_order                             = None
+    next_pick                               = None
+    is_league_owner                         = False
+    is_league_locked                        = False
+    draft_complete                          = False
 
     # cached team info
-    team_data_grabbed_at = None
-    current_team_id = None
-    current_team_name = None
-    my_team_standings = []
+    current_team_id                         = None
+    current_team_name                       = None
+    my_team_standings                       = None
 
     # cached leaderboard info
-    player_scores = []
-    leaguemate_data_grabbed_at = None
-    leaguemate_standings = []
-    favourite_data_grabbed_at = None
-    favourite_players = []
-    favourite_standings = []
+    player_scores                           = None
+    leaguemate_standings                    = None
+    favourite_players                       = None
+    favourite_standings                     = None
 
     # services locked and loaded
-    team_service = None
-    league_service = None
-    leaderboard_service = None
+    team_service                            = None
+    league_service                          = None
+    leaderboard_service                     = None
 
-    @classmethod
-    def init_system_state(cls):
-        # system state info
-        try:
-            system_state = cls.auth_base.get_system_state()
-            cls.blocking_state = system_state["blocking"]
-            cls.banner_message = system_state["banner_message"]
-            cls.warning_message = system_state["warning_message"]
-            cls.last_live_scores = system_state["last_live_scores"]
-            cls.min_version = system_state["version"]
-
-            client_version = version.parse(cls.VERSION.strip('"'))
-            server_version = version.parse(cls.min_version.strip('"'))
-
-            if server_version.release[1] > client_version.release[1]:
-                cls.blocking_state = True
-                cls.warning_message = f"Unsupported Version, please download the latest version ({server_version}) from the GitHub page: https://github.com/bfararjeh/sf6-fantasy-league/releases"
-
-            return cls.blocking_state
-
-        except Exception as e:
-            cls.blocking_state = True
-            cls.banner_message = None
-            cls.warning_message = f"CRITICAL ERROR: Unable to connect to database. Error {e}"
-            return cls.blocking_state
+    # refresh timers
+    system_state_grabbed_at                 = None
+    league_data_grabbed_at                  = None
+    team_data_grabbed_at                    = None
+    leaguemate_data_grabbed_at              = None
+    favourite_data_grabbed_at               = None
 
     @classmethod
     def init_services(cls):
@@ -97,12 +76,60 @@ class Session:
         cls.team_service = TeamService(cls.auth_base)
         cls.league_service = LeagueService(cls.auth_base)
         cls.leaderboard_service = LeaderboardService(cls.auth_base)
+
+    @classmethod
+    def init_system_state(cls):
+        # refresh timer logic - fixed at 5 mins
+        current_time = datetime.now()
+
+        if not (
+            cls.system_state_grabbed_at is None
+            or cls.system_state_grabbed_at <= current_time - timedelta(minutes=5)
+        ):
+            return cls.blocking_state
+        print("REFRESH: system_state")
+        # system state info
+        try:
+            system_state = cls.auth_base.get_system_state()
+            cls.system_state_grabbed_at = datetime.now()
+
+            cls.blocking_state = system_state["blocking"]
+            cls.banner_message = system_state["banner_message"]
+            cls.warning_message = system_state["warning_message"]
+            cls.last_live_scores = system_state["last_live_scores"]
+            cls.min_version = system_state["version"]
+
+            client_version = version.parse(cls.VERSION.strip('"'))
+            server_version = version.parse(cls.min_version.strip('"'))
+
+            if server_version.release[1] > client_version.release[1]:
+                cls.blocking_state = True
+                cls.warning_message = f"Unsupported Version, please download the latest version ({server_version}) from the GitHub page: https://github.com/bfararjeh/sf6-fantasy-league/releases"
+
+            cls.player_scores = cls.leaderboard_service.get_players()
+
+            return cls.blocking_state
+
+        except Exception as e:
+            cls.blocking_state = True
+            cls.banner_message = None
+            cls.warning_message = f"CRITICAL ERROR: Unable to connect to database. Error {e}"
+            return cls.blocking_state
     
     @classmethod
-    def init_league_data(cls):
+    def init_league_data(cls, force=False):
+        if cls.init_system_state():
+            return
+        
+        # refresh timer logic
+        minutes = 1440 if cls.draft_complete else 5
+        if not cls._should_refresh(cls.league_data_grabbed_at, minutes, force=force):
+            return
+        print("REFRESH: league_data")
         # league data
         try:
             league_data = cls.league_service.get_full_league_info() or None
+            cls.league_data_grabbed_at = datetime.now()
 
             cls.current_league_id = league_data["league_id"] or None
             cls.current_league_name = league_data["league_name"] or None
@@ -115,60 +142,110 @@ class Session:
                 cls.next_pick = league_data["next_pick"]
                 cls.draft_complete = league_data["draft_complete"]
             except Exception:
-                cls.draft_order = []
+                cls.draft_order = None
                 cls.next_pick = None
                 cls.draft_complete = False
 
         except Exception:
+            cls.league_data_grabbed_at = None
+
             cls.current_league_id = None
             cls.current_league_name = None
             cls.league_forfeit = None
             cls.is_league_owner = False
-            cls.leaguemates = []
+            cls.leaguemates = None
             cls.is_league_locked = False
-            cls.draft_order = []
+            cls.draft_order = None
             cls.next_pick = None
             cls.draft_complete = False
 
     @classmethod
-    def init_team_data(cls):
+    def init_team_data(cls, force=False):
+        if cls.init_system_state():
+            return
+        
+        # refresh timer logic
+        minutes = 1440 if cls.draft_complete else 5
+        if not cls._should_refresh(cls.team_data_grabbed_at, minutes, force=force):
+            return
+        print("REFRESH: team_data")
         # team data
         try:
             team_data = cls.team_service.get_full_team_info() or None
+            cls.team_data_grabbed_at = datetime.now()
+
             cls.current_team_id = team_data["team_id"] or None
             cls.current_team_name = team_data["team_name"] or None
             cls.my_team_standings = {k: team_data[k] for k in ("players", "total_points")} or None
 
+            draft_data = team_data["league"]
+            cls.next_pick = draft_data["pick_turn"]["manager_name"]
+            cls.draft_complete = draft_data["draft_complete"]
+            cls.is_league_locked = draft_data["locked"]
+
         except Exception:
+            cls.team_data_grabbed_at = None
+
             cls.current_team_id = None
             cls.current_team_name = None
             cls.my_team_standings = None
 
     @classmethod
-    def init_players(cls):
-        try:
-            cls.player_scores = cls.leaderboard_service.get_players()
-        except Exception:
-            cls.player_scores = []
+    def init_leaderboards(cls, force=False):
+        if cls.init_system_state():
+            return
 
-    @classmethod
-    def init_leaderboards(cls):
+        # refresh timer logic
+        minutes = 1440 if cls.draft_complete else 5
+        if not cls._should_refresh(cls.leaguemate_data_grabbed_at, minutes, force=force):
+            return
+        print("REFRESH: leaderboards")
         try:
             cls.leaguemate_standings = cls.leaderboard_service.get_leaguemate_standings()
+            cls.leaguemate_data_grabbed_at = datetime.now()
         except Exception:
-            cls.leaguemate_standings = []
+            cls.leaguemate_standings = None
+            cls.leaguemate_data_grabbed_at = None
 
     @classmethod
-    def init_favourites(cls):
+    def init_favourites(cls, force=False):
+        if cls.init_system_state():
+            return
+        
+        # refresh timer logic
+        if not cls._should_refresh(cls.favourite_data_grabbed_at, 1440, force=force):
+            return
+        print("REFRESH: favourites")
         # favourites
         try:
             favourites = AppStore._load_all().get("favourites")
             if isinstance(favourites, list):
                 cls.favourite_players = favourites
             cls.favourite_standings = cls.leaderboard_service.get_favourite_standings(cls.favourite_players) if cls.favourite_players else None
+            cls.favourite_data_grabbed_at = datetime.now()
         except Exception:
+            cls.favourite_data_grabbed_at = datetime.now()
             cls.favourite_players = None
             cls.favourite_standings = None
+
+    @classmethod
+    def init_all(cls, force=False):
+        cls.init_league_data(force)
+        cls.init_team_data(force)
+        cls.init_leaderboards(force)
+        cls.init_favourites(force)
+
+    @classmethod
+    def _should_refresh(cls, grabbed_at, minutes, force=False):
+        now = datetime.now()
+
+        if force:
+            return True
+
+        if grabbed_at is None:
+            return True
+
+        return grabbed_at <= now - timedelta(minutes=minutes)
 
     @classmethod
     def reset(cls):
@@ -194,24 +271,31 @@ class Session:
         cls.current_league_name = None
         cls.league_forfeit = None
         cls.is_league_owner = False
-        cls.leaguemates = []
+        cls.leaguemates = None
         cls.is_league_locked = False
-        cls.draft_order = []
+        cls.draft_order = None
         cls.next_pick = None
         cls.draft_complete = False
 
         # cached team info
         cls.current_team_id = None
         cls.current_team_name = None
-        cls.my_team_standings = []
+        cls.my_team_standings = None
 
         # cached leaderboard info
-        cls.favourite_players = []
-        cls.player_scores = []
-        cls.leaguemate_standings = []
-        cls.favourite_standings = []
+        cls.favourite_players = None
+        cls.player_scores = None
+        cls.leaguemate_standings = None
+        cls.favourite_standings = None
 
         # services locked and loaded
         cls.team_service = None
         cls.league_service = None
         cls.leaderboard_service = None
+
+        # refresh timers
+        cls.system_state_grabbed_at = None
+        cls.league_data_grabbed_at = None
+        cls.team_data_grabbed_at = None
+        cls.leaguemate_data_grabbed_at = None
+        cls.favourite_data_grabbed_at = None

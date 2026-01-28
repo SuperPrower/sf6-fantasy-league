@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from app.client.controllers.session import Session
+from app.client.widgets.refresh_button import RefreshButton
 
 class HeaderBar(QWidget):
     def __init__(self, app):
@@ -46,11 +47,6 @@ class HeaderBar(QWidget):
         help_button = QPushButton("Help")
         help_button.setCursor(Qt.CursorShape.PointingHandCursor)
         help_button.clicked.connect(self.app.open_help)
-
-        logout_button = QPushButton("Log out")
-        logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        logout_button.clicked.connect(self.app.logout)
-
         help_button.setStyleSheet("""
             QPushButton {
                 font-size: 12px;
@@ -63,6 +59,9 @@ class HeaderBar(QWidget):
             }
         """)
 
+        logout_button = QPushButton("Log out")
+        logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        logout_button.clicked.connect(self.app.logout)
         logout_button.setStyleSheet("""
             QPushButton {
                 font-size: 12px;
@@ -75,9 +74,13 @@ class HeaderBar(QWidget):
             }
         """)
 
+        refresh_button = RefreshButton()
+        refresh_button.refresh_requested.connect(lambda: self.app.refresh_all_views())
+
         for btn in (help_button, logout_button):
             btn.setFixedHeight(32)
             btn.setFixedWidth(64)
 
+        layout.addWidget(refresh_button)
         layout.addWidget(help_button)
         layout.addWidget(logout_button)

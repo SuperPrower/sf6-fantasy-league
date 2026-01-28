@@ -26,7 +26,6 @@ class TeamService():
 
     def get_full_team_info(self):
         team_id = self.get_my_team()
-
         if not team_id:
             raise Exception("You do not own a team!")
         
@@ -35,6 +34,11 @@ class TeamService():
             .table("teams")
             .select("""
                 team_name,
+                league:leagues(
+                    pick_turn:managers!pick_turn(manager_name),
+                    draft_complete,
+                    locked
+                ),
                 team_players(
                     player_name,
                     points,
@@ -48,18 +52,26 @@ class TeamService():
         ).data
 
         team_name = data["team_name"]
-        rows = data["team_players"]  # list of team_players rows
+        league_info = data.get("league", {})
+        rows = data["team_players"]
 
         return {
             "team_name": team_name,
             "team_id": team_id,
+            "league": league_info,
             "players": [
-                {"id": r["player_name"], "points": r["points"], "region": r["players"]["region"], "joined_at":r["joined_at"], "left_at":r["left_at"]}
+                {
+                    "id": r["player_name"],
+                    "points": r["points"],
+                    "region": r["players"]["region"],
+                    "joined_at": r["joined_at"],
+                    "left_at": r["left_at"]
+                }
                 for r in rows
             ],
             "total_points": sum(r["points"] for r in rows)
         }
-
+ 
     def create_team(self, team_name: str):
         my_league = self.get_my_league()
         # validation

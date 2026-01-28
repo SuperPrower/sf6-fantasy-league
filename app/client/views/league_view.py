@@ -430,7 +430,7 @@ class LeagueView(QWidget):
 
         def _success(success):
             if success:
-                self._refresh()
+                self._refresh(force=1)
                 self._set_status("League created successfully!", code=1)
 
         def _error(error):
@@ -455,7 +455,7 @@ class LeagueView(QWidget):
         
         def _success(success):
             if success:  
-                self._refresh()
+                self._refresh(force=1)
 
                 self._set_status("League joined successfully!", code=1)
 
@@ -476,7 +476,7 @@ class LeagueView(QWidget):
 
         def _success(success):
             if success:  
-                self._refresh()
+                self._refresh(force=1)
                 self._set_status("League left successfully!", code=1)
 
         def _error(error):
@@ -503,7 +503,7 @@ class LeagueView(QWidget):
 
         def _success(success):
             if success:  
-                self._refresh()
+                self._refresh(force=1)
                 self._set_status("Draft order assigned successfully!", code=1)
 
         def _error(error):
@@ -523,7 +523,7 @@ class LeagueView(QWidget):
 
         def _success(success):
             if success:  
-                self._refresh()
+                self._refresh(force=1)
 
                 self._set_status("Draft started successfully! Head over to the team page to pick your players!", code=1)
 
@@ -548,7 +548,8 @@ class LeagueView(QWidget):
             return
 
         def _success(success):
-            if success:  
+            if success:
+                Session.league_forfeit = forfeit
                 self.forfeit_label.setText(
                             f'<span style="font-weight:bold; color:#bf0000;">Forfeit:</span> {self.my_league_forfeit}'
                             )
@@ -568,8 +569,8 @@ class LeagueView(QWidget):
 
 # -- LAYOUT STUFF
 
-    def _refresh(self):
-        Session.init_league_data()
+    def _refresh(self, force=0):
+        Session.init_league_data(force)
 
         self.status_label.setText("")
 
@@ -578,8 +579,9 @@ class LeagueView(QWidget):
         self.my_league_id = Session.current_league_id
         self.my_league_forfeit = Session.league_forfeit
         self.my_capacity = f"{len(Session.leaguemates)}/5"
-        self.my_leaguemates = [d['manager_name'] for d in Session.leaguemates]
-        self.my_draft_order = Session.draft_order or None
+        leaguemates = Session.leaguemates or []
+        self.my_leaguemates = [d['manager_name'] for d in leaguemates]
+        self.my_draft_order = Session.draft_order or []
         self.my_next_pick = Session.next_pick
         self.my_locked = Session.is_league_locked
         self.is_owner = Session.is_league_owner
@@ -651,4 +653,4 @@ class LeagueView(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._refresh()
+        self._refresh(force=0)

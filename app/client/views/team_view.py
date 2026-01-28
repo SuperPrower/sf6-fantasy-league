@@ -400,7 +400,7 @@ class TeamView(QWidget):
         
         def _success(success):
             if success:
-                self._refresh()
+                self._refresh(force=1)
                 self._set_status(f"Welcome {player} to {self.my_team_name}!", 1)
         
         def _error(error):
@@ -424,7 +424,7 @@ class TeamView(QWidget):
         
         def _success(success):
             if success:
-                self._refresh()
+                self._refresh(force=1)
                 self._set_status("Team created successfuly!", 1)
         
         def _error(error):
@@ -442,8 +442,8 @@ class TeamView(QWidget):
 
 # -- LAYOUT STUFF --
 
-    def _refresh(self):
-        Session.init_team_data()
+    def _refresh(self, force=0):
+        Session.init_team_data(force)
 
         self.status_label.setText("")
 
@@ -451,7 +451,7 @@ class TeamView(QWidget):
         self.my_username = Session.user
         self.my_user_id = Session.user_id
         self.my_team_name = Session.current_team_name
-        self.my_team_standings = Session.my_team_standings
+        self.my_team_standings = Session.my_team_standings or []
         
         self.my_next_pick = Session.next_pick
         self.is_draft_complete = Session.draft_complete
@@ -472,7 +472,7 @@ class TeamView(QWidget):
             self.team_overview.setVisible(False)
 
         self.draft_picker.setVisible(
-            bool(self.my_team_name) and not self.is_draft_complete and self.my_username == self.my_next_pick and self.is_league_locked
+            bool(self.my_team_name) and not self.is_draft_complete and (self.my_username == self.my_next_pick or self.my_user_id == self.my_next_pick) and self.is_league_locked
         )
 
         self.team_name_label.setText(f"{self.my_team_name}")

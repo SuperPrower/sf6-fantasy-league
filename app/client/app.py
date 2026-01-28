@@ -171,3 +171,6 @@ class FantasyApp(QMainWindow):
         self.leaderboard_view = None
 
         self.show_login_view()
+    
+    def refresh_all_views(self):
+        Session.init_all(force=1)

@@ -369,7 +369,7 @@ class LeaderboardView(QWidget):
         try:
             AppStore.append("favourites", fav)
             self.add_fav_input.setText("")
-            self._refresh()
+            self._refresh(force=1)
             self._set_status("Favourite added!", 1)
 
         except Exception as e:
@@ -378,7 +378,7 @@ class LeaderboardView(QWidget):
     def remove_favourite(self, user_id):
         try:
             AppStore.remove("favourites", user_id)
-            self._refresh()
+            self._refresh(force=1)
             self._set_status("Favourite removed!", 1)
         except Exception as e:
             self._set_status(f"Unable to remove favourite: {e}", 2)
@@ -386,9 +386,9 @@ class LeaderboardView(QWidget):
 
 # -- LAYOUT STUFF --
 
-    def _refresh(self):
-        Session.init_leaderboards()
-        Session.init_favourites()
+    def _refresh(self, force=0):
+        Session.init_leaderboards(force)
+        Session.init_favourites(force)
 
         self.status_label.setText("")
 

@@ -32,9 +32,8 @@ class PlayerView(QWidget):
         self.root_layout.setSpacing(0)
         self.setLayout(self.root_layout)
 
-        # grab player info then cache it
-        Session.init_players()
-        self.player_scores = Session.player_scores
+        # grab player info from cache
+        self.player_scores = Session.player_scores or []
 
         self.SORT_KEYS = {
             "name": lambda p: p["name"].lower(),
