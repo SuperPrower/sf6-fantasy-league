@@ -31,14 +31,20 @@ def main():
     # custom excepthook for bluescreening and error logging
     sys.excepthook = excepthook
 
+    window = FantasyApp()
+    window.show()
+
     app.setWindowIcon(
         QIcon(
-            str(resource_path("app/client/assets/icons/logo.png"))
+            str(resource_path("app/client/assets/icons/logo.ico"))
         )
     )
 
-    window = FantasyApp()
-    window.show()
+    window.setWindowIcon(
+        QIcon(
+            str(resource_path("app/client/assets/icons/logo.ico"))
+        )
+    )
 
     sys.exit(app.exec())
 
@@ -52,10 +58,10 @@ def excepthook(exc_type, exc, tb):
             widget.blue_screen.show_error(error_text)
             break
 
-def resource_path(relative: str) -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS) / relative
-    return Path(relative)
+def resource_path(relative_path: str) -> str:
+    if hasattr(sys, "_MEIPASS"):
+        return str(Path(sys._MEIPASS) / relative_path)
+    return str(Path(relative_path).resolve())
 
 if __name__ == "__main__":
     main()

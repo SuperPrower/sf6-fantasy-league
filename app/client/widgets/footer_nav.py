@@ -39,6 +39,7 @@ class FooterNav(QWidget):
         buttons = [
             ("League", self.app.show_league_view),
             ("Team", self.app.show_team_view),
+            ("Home", self.app.show_home_view),
             ("Players", self.app.show_players_view),
             ("Leaderboards", self.app.show_leaderboards_view),
         ]

@@ -1,4 +1,5 @@
 from pathlib import Path
+import sys
 
 from PyQt6.QtWidgets import (
     QWidget, 
@@ -8,7 +9,8 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSizePolicy,
     QScrollArea,
-    QPushButton
+    QPushButton,
+    QApplication
 )
 
 from PyQt6.QtCore import Qt
@@ -46,6 +48,9 @@ class PlayerView(QWidget):
             "region": "Sort: Region",
             "points": "Sort: Points",
         }
+
+        self.PLAYER_IMG_DIR = Path(self.resource_path("app/client/assets/player_pictures"))
+        self.REGION_ICO_DIR = Path(self.resource_path("app/client/assets/icons/flags"))
 
         self._build_main()
 
@@ -115,6 +120,7 @@ class PlayerView(QWidget):
 
         self.sort_btn = QPushButton(self.SORT_LABELS[self.current_sort])
         self.sort_btn.setFixedWidth(80)
+        self.sort_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.sort_btn.clicked.connect(self._cycle_sort_mode)
 
         info_layout.addWidget(team_label)
@@ -129,9 +135,6 @@ class PlayerView(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
-
-        PLAYER_IMG_DIR = Path("app/client/assets/player_pictures")
-        REGION_ICO_DIR = Path("app/client/assets/icons/flags")
 
         for player in player_batch:
 
@@ -149,11 +152,11 @@ class PlayerView(QWidget):
             image.setStyleSheet("border: 3px solid #333;")
             image.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            img_path = PLAYER_IMG_DIR / f"{player["name"]}.jpg"
+            img_path = self.PLAYER_IMG_DIR / f"{player["name"]}.jpg"
 
             pixmap = QPixmap(str(img_path))
             if pixmap.isNull():
-                pixmap = QPixmap(str(PLAYER_IMG_DIR / "placeholder.png"))
+                pixmap = QPixmap(str(self.PLAYER_IMG_DIR / "placeholder.png"))
 
             image.setPixmap(
                 pixmap.scaled(
@@ -163,9 +166,9 @@ class PlayerView(QWidget):
                 )
             )
 
-            img_path = REGION_ICO_DIR / f"{player["region"]}.png"
+            img_path = self.REGION_ICO_DIR / f"{player["region"]}.png"
             if not img_path.exists():
-                img_path = REGION_ICO_DIR / "placeholder.png"
+                img_path = self.REGION_ICO_DIR / "placeholder.png"
 
             info_label = QLabel()
             info_label.setTextFormat(Qt.TextFormat.RichText)
@@ -208,8 +211,17 @@ class PlayerView(QWidget):
             self.player_layout.addWidget(self._build_player_slot(batch))
 
     def _cycle_sort_mode(self):
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+
         self.current_sort_index = (self.current_sort_index + 1) % len(self.SORT_KEYS)
         self.current_sort = list(self.SORT_KEYS.keys())[self.current_sort_index]
 
         self.sort_btn.setText(self.SORT_LABELS[self.current_sort])
         self._rebuild_players_view(sort_by=self.current_sort)
+
+        QApplication.restoreOverrideCursor()
+
+    def resource_path(self, relative_path: str) -> str:
+        if hasattr(sys, "_MEIPASS"):
+            return str(Path(sys._MEIPASS) / relative_path)
+        return str(Path(relative_path).resolve())

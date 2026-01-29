@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from functools import partial
+import sys
 import uuid
 
 from PyQt6.QtWidgets import (
@@ -35,6 +36,8 @@ class LeaderboardView(QWidget):
         super().__init__()
         self.app = app
 
+        self.PLAYER_IMG_DIR = Path(self.resource_path("app/client/assets/player_pictures"))
+        
         # build static ui then update
         self._build_static()
         self._refresh()
@@ -45,6 +48,8 @@ class LeaderboardView(QWidget):
         self.root_layout.setSpacing(0)
 
         self.header = HeaderBar(self.app)
+        self.header.refresh_button.refresh_requested.connect(lambda: self._refresh(force=1))
+        
         self.footer = FooterNav(self.app)
 
         self.scroll = QScrollArea()
@@ -199,13 +204,12 @@ class LeaderboardView(QWidget):
         image.setStyleSheet("border: 2px solid #333;")
         image.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        PLAYER_IMG_DIR = Path("app/client/assets/player_pictures")
         player_name = player["player_name"]
-        img_path = PLAYER_IMG_DIR / f"{player_name}.jpg"
+        img_path = self.PLAYER_IMG_DIR / f"{player_name}.jpg"
 
         pixmap = QPixmap(str(img_path))
         if pixmap.isNull():
-            pixmap = QPixmap(str(PLAYER_IMG_DIR / "placeholder.png"))
+            pixmap = QPixmap(str(self.PLAYER_IMG_DIR / "placeholder.png"))
 
         image.setPixmap(
             pixmap.scaled(
@@ -410,9 +414,13 @@ class LeaderboardView(QWidget):
             if widget:
                 widget.setParent(None)
 
-        for team in sorted(self.leaguemate_data, key=lambda t: t["total_points"], reverse=True):
-            team_widget = self._build_team_widget(team)
-            self.leaguemate_layout.addWidget(team_widget)
+        if self.leaguemate_data:
+            self.leaguemate_container.setVisible(True)
+            for team in sorted(self.leaguemate_data, key=lambda t: t["total_points"], reverse=True):
+                team_widget = self._build_team_widget(team)
+                self.leaguemate_layout.addWidget(team_widget)
+        else:
+            self.leaguemate_container.setVisible(False)
 
     def _update_favourites(self):
         for i in reversed(range(self.favourite_display.count())):
@@ -445,3 +453,8 @@ class LeaderboardView(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self._refresh()
+
+    def resource_path(self, relative_path: str) -> str:
+        if hasattr(sys, "_MEIPASS"):
+            return str(Path(sys._MEIPASS) / relative_path)
+        return str(Path(relative_path).resolve())

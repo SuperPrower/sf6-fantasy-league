@@ -74,13 +74,12 @@ class HeaderBar(QWidget):
             }
         """)
 
-        refresh_button = RefreshButton()
-        refresh_button.refresh_requested.connect(lambda: self.app.refresh_all_views())
+        self.refresh_button = RefreshButton()
 
         for btn in (help_button, logout_button):
             btn.setFixedHeight(32)
             btn.setFixedWidth(64)
 
-        layout.addWidget(refresh_button)
+        layout.addWidget(self.refresh_button)
         layout.addWidget(help_button)
         layout.addWidget(logout_button)

@@ -35,6 +35,8 @@ class LeagueView(QWidget):
         self.root_layout.setSpacing(0)
 
         self.header = HeaderBar(self.app)
+        self.header.refresh_button.refresh_requested.connect(lambda: self._refresh(force=1))
+
         self.footer = FooterNav(self.app)
 
         self.scroll = QScrollArea()
@@ -142,6 +144,10 @@ class LeagueView(QWidget):
         return container
 
     def _build_leave_button(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom)
+
         # leave league
         leave_btn = QPushButton("Leave League")
         leave_btn.setFixedWidth(100)
@@ -162,7 +168,9 @@ class LeagueView(QWidget):
         """)
         leave_btn.clicked.connect(self.leave_league)
 
-        return leave_btn
+        layout.addWidget(leave_btn, stretch=1)
+
+        return container
 
     def _build_league_info(self):
         container = QWidget()
@@ -423,6 +431,7 @@ class LeagueView(QWidget):
 
     def create_league(self):
         name = self.create_input.text().strip()
+        self.create_input.setText("")
 
         if not name:
             self._set_status("Please enter a league name.", code=2)
@@ -447,7 +456,7 @@ class LeagueView(QWidget):
 
     def join_league(self):
         league_id = self.join_input.text().strip()
-        print("join_league: CLICK")
+        self.join_input.setText("")
 
         if not league_id:
             self._set_status("Please enter a league ID.", code=2)
@@ -472,8 +481,6 @@ class LeagueView(QWidget):
         )
 
     def leave_league(self):
-        print("leave_league: CLICK")
-
         def _success(success):
             if success:  
                 self._refresh(force=1)
@@ -493,7 +500,7 @@ class LeagueView(QWidget):
 
     def assign_draft_order(self):
         usernames = self.draft_input.text().strip()
-        print("assign_draft_order: CLICK")
+        self.draft_input.setText("")
 
         if not usernames:
             self._set_status("Please enter a list of usernames.", code=2)
@@ -519,8 +526,6 @@ class LeagueView(QWidget):
         )
 
     def begin_draft(self):
-        print("begin_draft: CLICK")
-
         def _success(success):
             if success:  
                 self._refresh(force=1)
@@ -541,7 +546,7 @@ class LeagueView(QWidget):
 
     def set_forfeit(self):
         forfeit = self.forfeit_input.text().strip()
-        print("set_forfeit: CLICK")
+        self.forfeit_input.setText("")
 
         if not forfeit:
             self._set_status("Please enter a forfeit.", code=2)
@@ -549,9 +554,10 @@ class LeagueView(QWidget):
 
         def _success(success):
             if success:
+                self.my_league_forfeit = forfeit
                 Session.league_forfeit = forfeit
                 self.forfeit_label.setText(
-                            f'<span style="font-weight:bold; color:#bf0000;">Forfeit:</span> {self.my_league_forfeit}'
+                            f'<span style="font-weight:bold; color:#bf0000;">Forfeit:</span> {forfeit}'
                             )
                 self._set_status("Forfeit set!", code=1)
 
@@ -578,8 +584,8 @@ class LeagueView(QWidget):
         self.my_league_name = Session.current_league_name
         self.my_league_id = Session.current_league_id
         self.my_league_forfeit = Session.league_forfeit
-        self.my_capacity = f"{len(Session.leaguemates)}/5"
         leaguemates = Session.leaguemates or []
+        self.my_capacity = f"{len(leaguemates)}/5"
         self.my_leaguemates = [d['manager_name'] for d in leaguemates]
         self.my_draft_order = Session.draft_order or []
         self.my_next_pick = Session.next_pick
@@ -628,6 +634,11 @@ class LeagueView(QWidget):
             self.provisional_order.setVisible(False)
         if bool(self.is_draft_complete):
             self.draft_info_container.setVisible(False)
+
+        if bool(self.my_locked) or bool(self.is_draft_complete):
+            self.leave.setVisible(False)
+        else:
+            self.leave.setVisible(True)
 
         # conditional controls
         self.owner_controls.setVisible(self.is_owner)

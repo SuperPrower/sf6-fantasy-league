@@ -366,7 +366,7 @@ class LeagueService():
         
         # naming format rules
         if len(forfeit) < 12 or len(forfeit) > 128:
-            raise Exception("Forfeit  must be inbetween 12 and 128 characters.")
+            raise Exception("Forfeit must be inbetween 12 and 128 characters.")
         if not re.fullmatch(r"^[\w' ]+$", forfeit):
             raise Exception("Forfeit must only include letters, numbers, underscores, apostrophes, and spaces.")
     

@@ -11,7 +11,7 @@ class Session:
     '''
     Class responsible with storing all cached data for the application.
     '''
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
     # authenticated supabase session
     auth_base                               = None
@@ -96,7 +96,6 @@ class Session:
             cls.blocking_state = system_state["blocking"]
             cls.banner_message = system_state["banner_message"]
             cls.warning_message = system_state["warning_message"]
-            cls.last_live_scores = system_state["last_live_scores"]
             cls.min_version = system_state["version"]
 
             client_version = version.parse(cls.VERSION.strip('"'))
@@ -122,7 +121,7 @@ class Session:
             return
         
         # refresh timer logic
-        minutes = 1440 if cls.draft_complete else 5
+        minutes = 1440 if cls.draft_complete else 1
         if not cls._should_refresh(cls.league_data_grabbed_at, minutes, force=force):
             return
         print("REFRESH: league_data")
@@ -165,7 +164,7 @@ class Session:
             return
         
         # refresh timer logic
-        minutes = 1440 if cls.draft_complete else 5
+        minutes = 1440 if cls.draft_complete else 1
         if not cls._should_refresh(cls.team_data_grabbed_at, minutes, force=force):
             return
         print("REFRESH: team_data")
@@ -196,7 +195,7 @@ class Session:
             return
 
         # refresh timer logic
-        minutes = 1440 if cls.draft_complete else 5
+        minutes = 1440 if cls.draft_complete else 1
         if not cls._should_refresh(cls.leaguemate_data_grabbed_at, minutes, force=force):
             return
         print("REFRESH: leaderboards")
@@ -227,13 +226,6 @@ class Session:
             cls.favourite_data_grabbed_at = datetime.now()
             cls.favourite_players = None
             cls.favourite_standings = None
-
-    @classmethod
-    def init_all(cls, force=False):
-        cls.init_league_data(force)
-        cls.init_team_data(force)
-        cls.init_leaderboards(force)
-        cls.init_favourites(force)
 
     @classmethod
     def _should_refresh(cls, grabbed_at, minutes, force=False):

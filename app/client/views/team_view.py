@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from datetime import datetime
+import sys
 
 from PyQt6.QtWidgets import (
     QWidget, 
@@ -16,7 +17,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
 )
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from PyQt6.QtGui import QPixmap
 
@@ -32,6 +33,9 @@ class TeamView(QWidget):
         super().__init__()
         self.app = app
 
+        self.PLAYER_IMG_DIR = Path(self.resource_path("app/client/assets/player_pictures"))
+        self.REGION_ICO_DIR = Path(self.resource_path("app/client/assets/icons/flags"))
+
         # build static ui then update
         self._build_static()
         self._refresh()
@@ -42,6 +46,8 @@ class TeamView(QWidget):
         self.root_layout.setSpacing(0)
 
         self.header = HeaderBar(self.app)
+        self.header.refresh_button.refresh_requested.connect(lambda: self._refresh(force=1))
+        
         self.footer = FooterNav(self.app)
 
         self.scroll = QScrollArea()
@@ -249,14 +255,12 @@ class TeamView(QWidget):
         image.setAlignment(Qt.AlignmentFlag.AlignCenter)
         image.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        PLAYER_IMG_DIR = Path("app/client/assets/player_pictures")
-
         player_name = player["id"]
-        img_path = PLAYER_IMG_DIR / f"{player_name}.jpg"
+        img_path = self.PLAYER_IMG_DIR / f"{player_name}.jpg"
 
         pixmap = QPixmap(str(img_path))
         if pixmap.isNull():
-            pixmap = QPixmap(str(PLAYER_IMG_DIR / "placeholder.png"))
+            pixmap = QPixmap(str(self.PLAYER_IMG_DIR / "placeholder.png"))
 
         image.setPixmap(
             pixmap.scaled(
@@ -327,9 +331,6 @@ class TeamView(QWidget):
             if widget:
                 widget.setParent(None)
 
-        PLAYER_IMG_DIR = Path("app/client/assets/player_pictures")
-        REGION_ICO_DIR = Path("app/client/assets/icons/flags")
-
         name = player["id"]
         region = player.get("region", "Unknown")
         points = player["points"]
@@ -346,9 +347,9 @@ class TeamView(QWidget):
 
         # Player image
         image = QLabel()
-        img_path = PLAYER_IMG_DIR / f"{name}.jpg"
+        img_path = self.PLAYER_IMG_DIR / f"{name}.jpg"
         if not img_path.exists():
-            img_path = PLAYER_IMG_DIR / "placeholder.png"
+            img_path = self.PLAYER_IMG_DIR / "placeholder.png"
         pixmap = QPixmap(str(img_path)).scaled(200, 200, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         image.setPixmap(pixmap)
         layout.addWidget(image)
@@ -357,9 +358,9 @@ class TeamView(QWidget):
         info_col = QVBoxLayout()
         info_col.setContentsMargins(0, 25, 0, 25)
 
-        region_img = REGION_ICO_DIR / f"{region}.png"
+        region_img = self.REGION_ICO_DIR / f"{region}.png"
         if not region_img.exists():
-            region_img = REGION_ICO_DIR / "placeholder.png"
+            region_img = self.REGION_ICO_DIR / "placeholder.png"
 
         info_label = QLabel(f"<b>{name}</b><br>{region} <img src='{region_img}' width='18' height='12'>")
         info_label.setTextFormat(Qt.TextFormat.RichText)
@@ -518,6 +519,11 @@ class TeamView(QWidget):
         colors = {0: "#333", 1: "#2e7d32", 2: "#cc0000"}
         self.status_label.setStyleSheet(f"color: {colors.get(code, '#333')};")
         self.status_label.setText(msg)
+
+    def resource_path(self, relative_path: str) -> str:
+        if hasattr(sys, "_MEIPASS"):
+            return str(Path(sys._MEIPASS) / relative_path)
+        return str(Path(relative_path).resolve())
 
     def showEvent(self, event):
         super().showEvent(event)
