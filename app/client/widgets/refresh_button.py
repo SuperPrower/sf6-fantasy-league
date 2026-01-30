@@ -16,6 +16,7 @@ class RefreshButton(QPushButton):
             QPushButton {
                 border: none;
                 background-color: #ffffff;
+                color: #000000;
             }
             QPushButton:disabled {
                 background-color: #cccccc;
