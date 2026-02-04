@@ -16,7 +16,8 @@ def signup_individual(test_email, test_password, test_username):
     Signup an individual account
     '''
     try:
-        SignupService(test_email, test_password, test_username)
+        sv = SignupService()
+        sv.signup(test_email, test_password, test_username)
         print(f"User '{test_email}' signed up successfuly.")
     except Exception as e:
         print(f"Sign up failed for user '{test_email}': {e}")

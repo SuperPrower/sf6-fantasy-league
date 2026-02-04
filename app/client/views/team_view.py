@@ -499,10 +499,6 @@ class TeamView(QWidget):
                 slot = self._build_empty_player_slot()
             self.team_bar_layout.addWidget(slot, stretch=1)
 
-        # default to first player
-        if players:
-            self._update_player_stat(players[0])
-
     def _create_separator(self):
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)

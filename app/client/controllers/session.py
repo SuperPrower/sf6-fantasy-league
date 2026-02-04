@@ -214,7 +214,7 @@ class Session:
         if cls.init_system_state():
             return
         
-        if not cls._should_refresh(cls.favourite_data_grabbed_at, 10, force=force):
+        if not cls._should_refresh(cls.favourite_data_grabbed_at, force=force):
             print("Time delta not sufficient enough to refresh.")
             return
         

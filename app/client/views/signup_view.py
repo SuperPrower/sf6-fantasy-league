@@ -75,6 +75,12 @@ class SignupView(QWidget):
         self.password_verify_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_verify_input.setFixedHeight(30)
 
+
+        self.name_input.returnPressed.connect(self._attempt_signup)
+        self.email_input.returnPressed.connect(self._attempt_signup)
+        self.password_input.returnPressed.connect(self._attempt_signup)
+        self.password_verify_input.returnPressed.connect(self._attempt_signup)
+
         # back to login page
         return_to_login = QPushButton("Return to login page")
         return_to_login.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -96,7 +102,7 @@ class SignupView(QWidget):
         self.submit_button = QPushButton("Sign Up")
         self.submit_button.setFixedHeight(40)
         self.submit_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.submit_button.clicked.connect(self.attempt_signup)
+        self.submit_button.clicked.connect(self._attempt_signup)
         self.submit_button.setStyleSheet(
             """
             QPushButton {
@@ -170,7 +176,7 @@ class SignupView(QWidget):
         self.password_verify_input.setEnabled(enabled)
         self.submit_button.setEnabled(enabled)
     
-    def attempt_signup(self):
+    def _attempt_signup(self):
         '''
         Attempts to create a new user with provided credentials
         '''

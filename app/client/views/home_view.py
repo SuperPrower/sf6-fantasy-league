@@ -44,12 +44,16 @@ class HomeView(QWidget):
                 color: #222;
             }
         """)
+        
+        userid_label = QLabel(f"User ID: {Session.user_id}")
+        userid_label.setStyleSheet("font-size: 14px; color: #555;")
+        
         welcome_subtitle = QLabel(
-"Welcome to the first Street Fighter 6 Fantasy League! If you're reading this, you've been selected to beta test this application.\n\n" \
+"Welcome to the first Street Fighter 6 Fantasy League! If you're reading this, you've been selected to test the alpha release of this application.\n\n" \
 
-"Everything should be functioning without error, keyword there being everything. What's required from you is to break this software in any way possible. Whether you find a way to join a league while you're already in one, or find a way to make those footer buttons look funky, everything is fair game.\n\n" \
+"Everything should be functioning without error, keyword there being should. What's required from you is to break this software in any way possible. Whether you find a way to join a league while you're already in one, or find a way to make those footer buttons look funky, everything is fair game.\n\n" \
 
-"Keep notes of everything you break, and how you broke it too. There'll be somewhere in the discord you can write your notes down, and I'll start working on them one by one. There will likely also be wider scale tests where I trial some admin functions (such as blocking the software server-side) and when it's time for those I'll let you know.\n\n" \
+"Keep notes of everything you break, and how you broke it too. There'll be somewhere in the discord you can write your notes down, and I'll start working on them one by one. Keep in mind that the way this app looks, from the colours, to the background, to everything else, is not a concern: that's for the beta. I am aware of some issues on Windows 11 dark mode, if it's too unreadable then switching to light mode fixes the problem (I think).\n\n" \
 
 "Other than that, enjoy! Although remember, I can see everything, so keep those league names clean..."
         )
@@ -63,6 +67,7 @@ class HomeView(QWidget):
 
         # adding all widgets
         welcome_layout.addWidget(welcome_title)
+        welcome_layout.addWidget(userid_label)
         welcome_layout.addWidget(welcome_subtitle)
 
         content_layout.addWidget(welcome_container)
