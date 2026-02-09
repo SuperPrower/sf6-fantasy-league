@@ -32,8 +32,9 @@ QPushButton {{
     background-color: {QColor("#4200FF").name()};
     color: {QColor("#ffffff").name()};
     border-radius: 6px;
-    padding: 10px 10px;
-    font-size: 16px;
+    padding: 8px 8px;
+    font-size: 14px;
+    font-weight: bold;
 }}
 QPushButton:hover {{
     background-color: {QColor("#4200FF").lighter(120).name()};
@@ -78,5 +79,46 @@ QPushButton:pressed {{
 }}
 QPushButton:disabled {{
     background-color: {QColor("#505050").name()};
+}}
+"""
+
+# owner tag, leave button
+BUTTON_STYLESHEET_D = """
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+
+            background-color: #b0131e;
+
+            padding: 6px 10px;
+            border-radius: 8px;
+        """
+
+SCROLL_STYLESHEET = f"""
+QScrollBar:vertical {{
+    background: {QColor("#10194D").darker(130).name()};
+    width: 10px;
+    margin: 0px;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:vertical {{
+    background: {QColor("#5A1DFF").name()};
+    min-height: 20px;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:vertical:hover {{
+    background: {QColor("#5A1DFF").lighter(120).name()};
+}}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {{
+    height: 0;
+}}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {{
+    background: transparent;
 }}
 """

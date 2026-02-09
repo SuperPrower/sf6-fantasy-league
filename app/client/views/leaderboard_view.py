@@ -15,18 +15,22 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSizePolicy,
     QScrollArea,
+    QSpacerItem
 )
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 
 from PyQt6.QtGui import QPixmap
 
 from app.client.controllers.session import Session
 
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+from PyQt6.QtGui import QColor
+
 from app.client.widgets.header_bar import HeaderBar
 from app.client.widgets.footer_nav import FooterNav
 
-from app.services.app_store import AppStore
+from app.client.theme import *
 
 class LeaderboardView(QWidget):
 
@@ -34,7 +38,15 @@ class LeaderboardView(QWidget):
         super().__init__()
         self.app = app
 
-        self.PLAYER_IMG_DIR = Path(self.resource_path("app/client/assets/player_pictures"))
+        self.PLAYER_IMG_DIR = Path(self._resource_path("app/client/assets/player_pictures"))
+        self.AVATAR_IMG_PATH = Path(self._resource_path("app/client/assets/avatars"))
+        self.RANK_STYLES = {
+            1: "#FFD700",
+            2: "#C0C0C0",
+            3: "#CD7F32",
+            4: "#888888",
+            5: "#FF4D4D",
+        }
         
         # build static ui then update
         self._build_static()
@@ -50,8 +62,10 @@ class LeaderboardView(QWidget):
         
         self.footer = FooterNav(self.app)
 
-        self.scroll = QScrollArea()
-        self.scroll.setWidgetResizable(True)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet(SCROLL_STYLESHEET)
 
         self.content_widget = QWidget()
 
@@ -60,7 +74,7 @@ class LeaderboardView(QWidget):
         self.content_layout.setContentsMargins(50, 35, 50, 35)
         self.content_layout.setSpacing(10)
 
-        self.scroll.setWidget(self.content_widget)
+        scroll.setWidget(self.content_widget)
 
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -72,7 +86,7 @@ class LeaderboardView(QWidget):
         """)
 
         self.root_layout.addWidget(self.header)
-        self.root_layout.addWidget(self.scroll, stretch=1)
+        self.root_layout.addWidget(scroll, stretch=1)
         self.root_layout.addWidget(self.status_label)
         self.root_layout.addWidget(self.footer)
 
@@ -83,32 +97,57 @@ class LeaderboardView(QWidget):
     def _build_sections(self):
         self.info = self._build_info()
         self.leaguemate_container = self._build_leaguemates()
-        self.favourite_container = self._build_favourites()
 
 
         self.content_layout.addWidget(self.info)
         self.content_layout.addWidget(self.leaguemate_container)
-        self.content_layout.addWidget(self.favourite_container)
 
 
 # -- BUILDERS --
 
     def _build_info(self):
         container = QWidget()
-        layout = QVBoxLayout(container)
+        layout = QHBoxLayout(container)
         layout.setSpacing(20)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        leaderboards = QLabel(f"Leaderboards")
+        players = QPushButton("Player Pool")
+        players.setCursor(Qt.CursorShape.PointingHandCursor)
+        players.clicked.connect(self.app.show_players_view)
+        players.setStyleSheet(BUTTON_STYLESHEET_A)
+
+        globals_btn = QPushButton("Global Stats")
+        globals_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        globals_btn.clicked.connect(self.app.show_globals_view)
+        globals_btn.setStyleSheet(BUTTON_STYLESHEET_A)
+
+        leaderboards = QLabel("Leaderboards")
         leaderboards.setAlignment(Qt.AlignmentFlag.AlignCenter)
         leaderboards.setStyleSheet("""
             font-size: 64px; 
-            font-weight: bold; 
-            color: #333; 
+            font-weight: bold;
         """)
 
-        layout.addWidget(leaderboards)
-        layout.addWidget(self._create_separator())
+        left = QWidget()
+        center = QWidget()
+        right = QWidget()
+
+        center_layout = QHBoxLayout(center)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.addWidget(leaderboards, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        right_layout = QHBoxLayout(right)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.addStretch()
+        right_layout.addWidget(players, alignment=Qt.AlignmentFlag.AlignTop)
+
+        left_layout = QHBoxLayout(left)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.addWidget(globals_btn, alignment=Qt.AlignmentFlag.AlignTop)
+        left_layout.addStretch()
+
+        layout.addWidget(left, 1)
+        layout.addWidget(center)
+        layout.addWidget(right, 1)
 
         return container
     
@@ -122,85 +161,19 @@ class LeaderboardView(QWidget):
         self.leaguemate_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
 
         layout.addLayout(self.leaguemate_layout)
-        layout.addWidget(self._create_separator())
-
-        return container
-
-    def _build_favourites(self):
-        container = QWidget()
-
-        main_layout = QVBoxLayout(container)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.setSpacing(15)
-
-        title_label = QLabel(f"Favourite users")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setStyleSheet("""
-            font-size: 32px; 
-            font-weight: bold; 
-            color: #333; 
-        """)
-
-        self.add_fav_input = QLineEdit()
-        self.add_fav_input.setPlaceholderText("User ID")
-
-        add_fav_layout = QVBoxLayout()
-        add_fav_layout.addWidget(self.add_fav_input)
-
-        add_fav_group = QGroupBox("Pick a User!")
-        add_fav_group.setLayout(add_fav_layout)
-
-        add_fav_label = QLabel("Add a favourite user here!")
-        add_fav_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        add_fav_label.setStyleSheet("""
-            font-size: 24px; 
-            font-weight: bold; 
-            color: #333; 
-        """)
-
-        btn = QPushButton("Favourite")
-        btn.setFixedWidth(100)
-        btn.setFixedHeight(30)
-        btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setStyleSheet("""
-            QPushButton {
-                font-size: 12px;
-                background-color: #ff9d00;
-                color: #000000;
-            }
-            QPushButton:hover {
-                background-color: #ffaa22;
-            }
-            QPushButton:pressed {
-                background-color: #de8900;
-            }
-        """)
-        btn.clicked.connect(self.add_favourite)
-
-        add_layout = QHBoxLayout()
-        add_layout.addWidget(add_fav_group, stretch=1)
-        add_layout.addWidget(btn, stretch=1)
-        add_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.favourite_display = QVBoxLayout()
-        self.favourite_display.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
-
-        main_layout.addWidget(title_label)
-        main_layout.addLayout(add_layout)
-        main_layout.addWidget(self._create_separator())
-        main_layout.addLayout(self.favourite_display)
 
         return container
 
     def _build_player_slot(self, player: dict):
         slot = QWidget()
         layout = QVBoxLayout(slot)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         layout.setSpacing(5)
 
         image = QLabel()
-        image.setStyleSheet("border: 2px solid #333;")
-        image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        image.setFixedSize(QSize(150,150))
+        image.setStyleSheet("border: 2px solid #BBBBBB;")
+        image.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
         player_name = player["player_name"]
         img_path = self.PLAYER_IMG_DIR / f"{player_name}.jpg"
@@ -211,20 +184,17 @@ class LeaderboardView(QWidget):
 
         image.setPixmap(
             pixmap.scaled(
-                140, 140,
+                150, 150,
                 Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )
         )
 
-        name = QLabel(player["player_name"])
-        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name.setWordWrap(True)
+        name = QLabel(player_name)
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name.setStyleSheet("""
             font-size: 16px; 
-            font-weight: bold; 
-            color: #333; 
+            font-weight: bold;
         """)
 
         layout.addWidget(image)
@@ -239,11 +209,11 @@ class LeaderboardView(QWidget):
         layout.setSpacing(5)
 
         image = QLabel()
-        image.setFixedSize(140, 140)
+        image.setFixedSize(150, 150)
         image.setStyleSheet("""
-            border: 2px dashed #aaa;
-            background: #f0f0f0;
-            color: #999;
+            border: 2px dashed #555;
+            background-color: #333;
+            color: #eee;
         """)
         image.setAlignment(Qt.AlignmentFlag.AlignCenter)
         image.setText("?")
@@ -263,35 +233,75 @@ class LeaderboardView(QWidget):
         return slot
 
     def _build_team_widget(self, team: dict) -> QWidget:
-        """
-        Builds a QFrame representing one team in the leaderboard.
-        """
         team_frame = QFrame()
         team_frame.setObjectName("teamFrame")
         team_frame.setStyleSheet("""
             QFrame#teamFrame {
-                border: 2px solid #aaaaaa;
+                border: 2px solid #555555;
                 border-radius: 4px;
             }
         """)
-        
-        layout = QVBoxLayout(team_frame)
-        layout.setSpacing(10)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Team info labels
-        owner_label = QLabel(f"Owner: {team['user_name']}")
-        name_label = QLabel(f"Team Name: {team['team_name']}")
+        root_layout = QVBoxLayout(team_frame)
+        root_layout.setSpacing(15)
+
+        user_cont = QWidget()
+        user = QHBoxLayout(user_cont)
+        user.setSpacing(15)
+        user.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+
+        avatar = self._build_avatar(team["user_id"], 250)
+        avatar.setStyleSheet("border: 3px solid #FFFFFF; border-radius: 5px;")
+        avatar.setFixedSize(250, 250)
+
+        info_cont = QWidget()
+        info_cont.setFixedWidth(300)
+        info_layout = QVBoxLayout(info_cont)
+        info_layout.setSpacing(5)
+        info_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        rank = team.get("rank", 999)
+        rank_color = self.RANK_STYLES.get(rank, "#FFFFFF")
+
+        owner_label = QLabel(f"#{rank} {team['user_name']}")
+        owner_label.setStyleSheet(f"""
+            font-weight: bold;
+            font-size: 50px;
+            color: {rank_color};
+        """)
+
+        if rank <= 3:
+            glow = QGraphicsDropShadowEffect()
+            glow.setBlurRadius(25)
+            glow.setColor(QColor(rank_color))
+            glow.setOffset(0, 0)
+            owner_label.setGraphicsEffect(glow)
+
+        name_label = QLabel(f"{team['team_name']}")
+        name_label.setStyleSheet('''
+            font-weight: bold;
+            font-size: 28px;
+        ''')
         points_label = QLabel(f"Total Points: {team['total_points']}")
 
-        layout.addWidget(owner_label)
-        layout.addWidget(name_label)
-        layout.addWidget(points_label)
+        info_layout.addStretch()
+        info_layout.addWidget(owner_label, alignment= Qt.AlignmentFlag.AlignHCenter)
+        info_layout.addWidget(name_label, alignment= Qt.AlignmentFlag.AlignHCenter)
+        info_layout.addStretch()
+        info_layout.addWidget(points_label, alignment= Qt.AlignmentFlag.AlignHCenter)
+        info_layout.addStretch()
 
-        # Player row
+        user.addStretch()
+        user.addWidget(avatar)
+        user.addStretch()
+        user.addWidget(info_cont)
+        user.addStretch()
+
         player_row = QHBoxLayout()
         player_row.setSpacing(5)
+        player_row.setContentsMargins(25, 0, 25, 0)
         player_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         players = team.get("players", [])
 
         for i in range(5):
@@ -299,112 +309,52 @@ class LeaderboardView(QWidget):
                 slot = self._build_player_slot(players[i])
             else:
                 slot = self._build_empty_player_slot()
+
             player_row.addWidget(slot, stretch=1)
 
-        layout.addLayout(player_row)
+        root_layout.addWidget(user_cont)
+        root_layout.addLayout(player_row)
+
         return team_frame
 
-    def _build_favourite_widget(self, team: dict) -> QWidget:
-        """
-        Builds a single favourite team row with remove button.
-        """
-        fav_frame = QFrame()
-        fav_frame.setObjectName("favFrame")
-        fav_frame.setStyleSheet("""
-            QFrame#favFrame {
-                border: 2px solid #aaaaaa;
-                border-radius: 4px;
-            }
-        """)
-
-        layout = QVBoxLayout(fav_frame)
-        layout.setSpacing(10)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Info labels
-        owner_label = QLabel(f"Owner: {team['user_name']}")
-        name_label = QLabel(f"Team Name: {team['team_name']}")
-        points_label = QLabel(f"Total Points: {team['total_points']}")
-
-        layout.addWidget(owner_label)
-        layout.addWidget(name_label)
-        layout.addWidget(points_label)
-
-        # Remove button
-        remove_btn = QPushButton("Remove")
-        remove_btn.setFixedSize(60, 40)
-        remove_btn.clicked.connect(partial(self.remove_favourite, team["user_id"]))
-        layout.addWidget(remove_btn)
-
-        # Player row
-        player_row = QHBoxLayout()
-        player_row.setSpacing(5)
-        player_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        players = team.get("players", [])
-        for i in range(5):
-            if i < len(players):
-                slot = self._build_player_slot(players[i])
-            else:
-                slot = self._build_empty_player_slot()
-            player_row.addWidget(slot, stretch=1)
-
-        layout.addLayout(player_row)
-        return fav_frame
-
-
-# -- BUTTON METHODS --
-
-    def add_favourite(self):
-        print("add_favourite: CLICK")
-        fav = self.add_fav_input.text().strip()
+    def _build_avatar(self, user_id, size):
+        image = QLabel()
+        avatar = QPixmap()
 
         try:
-            uuid.UUID(str(fav))
-        except ValueError:
-            self._set_status("Please enter a valid user ID", 2)
-            return
+            avatar.loadFromData(Session.init_avatar(user_id))
+            if avatar.isNull():
+                avatar = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
 
-        if not fav:
-            self._set_status("Please enter a user ID.", 2)
-            return
+        except Exception:
+            avatar = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
 
-        try:
-            AppStore.append("favourites", fav)
-            self.add_fav_input.setText("")
-            self._refresh(force=1)
-            self._set_status("Favourite added!", 1)
-
-        except Exception as e:
-            self._set_status(f"Unable to add favourite: {e}", 2)
-
-    def remove_favourite(self, user_id):
-        try:
-            AppStore.remove("favourites", user_id)
-            self._refresh(force=1)
-            self._set_status("Favourite removed!", 1)
-        except Exception as e:
-            self._set_status(f"Unable to remove favourite: {e}", 2)
-
+        image.setPixmap(
+            avatar.scaled(
+                size, size,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+        )
+        
+        return image
 
 # -- LAYOUT STUFF --
 
     def _refresh(self, force=0):
         Session.init_leaderboards(force)
-        Session.init_favourites(force)
 
         self.status_label.setText("")
 
         self.my_username = Session.user
         self.my_user_id = Session.user_id
         self.leaguemate_data = Session.leaguemate_standings
-        self.favourite_data = Session.favourite_standings
         self.my_league = Session.current_league_name
 
         self._update_view()
 
     def _update_view(self):
         self._update_leaguemates()
-        self._update_favourites()
 
     def _update_leaguemates(self):
         for i in reversed(range(self.leaguemate_layout.count())):
@@ -414,22 +364,21 @@ class LeaderboardView(QWidget):
 
         if self.leaguemate_data:
             self.leaguemate_container.setVisible(True)
-            for team in sorted(self.leaguemate_data, key=lambda t: t["total_points"], reverse=True):
+
+            sorted_teams = sorted(
+                self.leaguemate_data,
+                key=lambda t: t["total_points"],
+                reverse=True
+            )
+
+            ranked_teams = self._apply_ranks(sorted_teams)
+
+            for team in ranked_teams:
                 team_widget = self._build_team_widget(team)
                 self.leaguemate_layout.addWidget(team_widget)
+
         else:
             self.leaguemate_container.setVisible(False)
-
-    def _update_favourites(self):
-        for i in reversed(range(self.favourite_display.count())):
-            widget = self.favourite_display.itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
-
-        if self.favourite_data:
-            for team in sorted(self.favourite_data, key=lambda t: t["total_points"], reverse=True):
-                fav_widget = self._build_favourite_widget(team)
-                self.favourite_display.addWidget(fav_widget)
 
     def _create_separator(self):
         separator = QFrame()
@@ -452,7 +401,29 @@ class LeaderboardView(QWidget):
         super().showEvent(event)
         self._refresh()
 
-    def resource_path(self, relative_path: str) -> str:
+    def _apply_ranks(self, teams):
+        ranked = []
+
+        last_points = None
+        last_rank = 0
+
+        for i, team in enumerate(teams):
+            pts = team["total_points"]
+
+            if pts == last_points:
+                rank = last_rank
+            else:
+                rank = i + 1
+                last_rank = rank
+                last_points = pts
+
+            team = dict(team)
+            team["rank"] = rank
+            ranked.append(team)
+
+        return ranked
+
+    def _resource_path(self, relative_path: str) -> str:
         if hasattr(sys, "_MEIPASS"):
             return str(Path(sys._MEIPASS) / relative_path)
         return str(Path(relative_path).resolve())

@@ -74,9 +74,9 @@ class TeamService():
             raise Exception("You already have a team!")
 
         # verify attributes
-        if len(team_name) < 4 or len(team_name) > 16:
-            raise Exception("Team name must be inbetween 4 and 16 characters.")
-        if not re.fullmatch(r'^\w+$', team_name):
+        if len(team_name) < 4 or len(team_name) > 24:
+            raise Exception("Team name must be inbetween 4 and 24 characters.")
+        if not re.fullmatch(r"^[\w']+$", team_name):
             raise Exception("Team name must only include letters, numbers, and underscores.")
     
         # insert new team into table

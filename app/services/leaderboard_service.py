@@ -39,7 +39,8 @@ class LeaderboardService():
                 team_id,
                 team_name,
                 owner:managers!teams_team_owner_fkey(
-                    manager_name
+                    manager_name, 
+                    user_id
                 ),
                 roster:team_players(
                     team_id,
@@ -53,7 +54,10 @@ class LeaderboardService():
         team_name_map = {t["team_id"]: t["team_name"] for t in data}
 
         owner_map = {
-            t["team_id"]: (t["owner"]["manager_name"] if t["owner"] else None)
+            t["team_id"]: {
+                "username": t["owner"]["manager_name"] if t["owner"] else None,
+                "user_id": t["owner"]["user_id"] if t["owner"] else None
+            }
             for t in data
         }
 
@@ -73,6 +77,7 @@ class LeaderboardService():
                 standings[team_id] = {
                     "team_name": team_name_map.get(team_id),
                     "owner_username": owner_map.get(team_id),
+                    "user_id": owner_map.get(team_id, {}).get("user_id"),
                     "players": []
                 }
 
@@ -84,7 +89,8 @@ class LeaderboardService():
         return [
             {
                 "team_name": data["team_name"],
-                "user_name": data["owner_username"],
+                "user_name": data["owner_username"]["username"],
+                "user_id": data["user_id"],
                 "players": data["players"],
                 "total_points": sum(p["points"] for p in data["players"])
             }
@@ -201,3 +207,14 @@ class LeaderboardService():
         ).data
 
         return players
+
+    def get_global_stats(self):
+        global_stats = self.verify_query(
+            self.supabase
+            .table("global_stats")
+            .select("*")
+            .order("run_at", desc=True)
+            .limit(1)
+        ).data
+        
+        return global_stats

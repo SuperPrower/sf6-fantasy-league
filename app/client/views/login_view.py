@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -8,7 +9,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import (
     Qt, 
-    QTimer)
+    QTimer,
+    QSize)
 
 from app.client.controllers.session import Session
 from app.services.auth_store import AuthStore
@@ -26,7 +28,7 @@ class LoginView(QWidget):
 
         # title
         title = QLabel("Fantasy Street Fighter 6")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         title.setStyleSheet(
             """
             QLabel {
@@ -38,15 +40,13 @@ class LoginView(QWidget):
 
         # footer
         footer = QLabel("© 2026 Fararjeh, All rights reserved.")
-        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        footer.setStyleSheet(
-            """
+        footer.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
+        footer.setStyleSheet("""
             QLabel {
                 font-size: 12px;
                 color: #888888;
             }
-            """
-        )
+        """)
 
         # email & pass
         self.email_input = QLineEdit()
@@ -103,6 +103,7 @@ class LoginView(QWidget):
 
         # status label
         self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet(
             """
@@ -116,6 +117,7 @@ class LoginView(QWidget):
         # form container for width control
         form_layout = QVBoxLayout()
         form_layout.setSpacing(15)
+        form_layout.addWidget(title)
         form_layout.addWidget(self.email_input)
         form_layout.addWidget(self.password_input)
         form_layout.addWidget(return_to_login)
@@ -123,23 +125,12 @@ class LoginView(QWidget):
         form_layout.addWidget(self.status_label)
 
         form_container = QWidget()
+        form_container.setFixedWidth(350)
         form_container.setLayout(form_layout)
-        form_container.setFixedWidth(320)
-
-        # content container for centering
-        content_container = QWidget()
-        content_layout = QVBoxLayout()
-        content_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        content_layout.setSpacing(20)
-
-        content_layout.addWidget(title)
-        content_layout.addWidget(form_container)
-
-        content_container.setLayout(content_layout)
 
         # assemble
         root_layout.addStretch()
-        root_layout.addWidget(content_container)
+        root_layout.addWidget(form_container, alignment=Qt.AlignmentFlag.AlignHCenter)
         root_layout.addStretch()
         root_layout.addWidget(footer)
 
@@ -179,7 +170,7 @@ class LoginView(QWidget):
 
             QApplication.restoreOverrideCursor()
             self.status_label.setText(f"Login successful! Welcome back {Session.user}.")
-            self.status_label.setStyleSheet("color: #2e7d32;")
+            self.status_label.setStyleSheet("color: #4ade00;")
 
             if self.app:
                 QTimer.singleShot(2000, self._login_success)

@@ -2,7 +2,6 @@ from packaging import version
 
 from datetime import datetime, timedelta
 
-from app.services.app_store import AppStore
 from app.services.leaderboard_service import LeaderboardService
 from app.services.team_service import TeamService
 from app.services.league_service import LeagueService
@@ -11,7 +10,7 @@ class Session:
     '''
     Class responsible with storing all cached data for the application.
     '''
-    VERSION = "1.1.0"
+    VERSION = "1.2.0"
 
     # authenticated supabase session
     auth_base                               = None
@@ -52,8 +51,7 @@ class Session:
     # cached leaderboard info
     player_scores                           = None
     leaguemate_standings                    = None
-    favourite_players                       = None
-    favourite_standings                     = None
+    global_stats                            = None
 
     # services locked and loaded
     team_service                            = None
@@ -64,7 +62,6 @@ class Session:
     system_state_grabbed_at                 = None
     league_data_grabbed_at                  = None
     leaguemate_data_grabbed_at              = None
-    favourite_data_grabbed_at               = None
 
     @classmethod
     def init_services(cls):
@@ -123,7 +120,6 @@ class Session:
             return
         
         if not cls._should_refresh(cls.league_data_grabbed_at, force=force):
-            print("Time delta not sufficient enough to refresh.")
             return
         
         print("REFRESH: league_data")
@@ -183,10 +179,15 @@ class Session:
             return
 
         if not cls._should_refresh(cls.leaguemate_data_grabbed_at, force=force):
-            print("Time delta not sufficient enough to refresh.")
             return
         
         print("REFRESH: leaderboards")
+
+        try:
+            if cls.global_stats == None:
+                cls.global_stats = cls.leaderboard_service.get_global_stats()
+        except:
+            cls.global_stats = None
 
         try:
             cls.leaguemate_standings = cls.leaderboard_service.get_leaguemate_standings()
@@ -194,29 +195,6 @@ class Session:
         except Exception:
             cls.leaguemate_standings = None
             cls.leaguemate_data_grabbed_at = None
-
-    @classmethod
-    def init_favourites(cls, force=False):
-        if cls.init_system_state():
-            return
-        
-        if not cls._should_refresh(cls.favourite_data_grabbed_at, force=force):
-            print("Time delta not sufficient enough to refresh.")
-            return
-        
-        print("REFRESH: favourites")
-
-        # favourites
-        try:
-            favourites = AppStore._load_all().get("favourites")
-            if isinstance(favourites, list):
-                cls.favourite_players = favourites
-            cls.favourite_standings = cls.leaderboard_service.get_favourite_standings(cls.favourite_players) if cls.favourite_players else None
-            cls.favourite_data_grabbed_at = datetime.now()
-        except Exception:
-            cls.favourite_data_grabbed_at = datetime.now()
-            cls.favourite_players = None
-            cls.favourite_standings = None
 
     @classmethod
     def init_avatar(cls, user_id):
@@ -290,10 +268,9 @@ class Session:
         cls.my_team_standings = None
 
         # cached leaderboard info
-        cls.favourite_players = None
         cls.player_scores = None
         cls.leaguemate_standings = None
-        cls.favourite_standings = None
+        cls.global_stats = None
 
         # services locked and loaded
         cls.team_service = None
@@ -304,4 +281,30 @@ class Session:
         cls.system_state_grabbed_at = None
         cls.league_data_grabbed_at = None
         cls.leaguemate_data_grabbed_at = None
-        cls.favourite_data_grabbed_at = None
+
+'''
+deprecated functionality. maybe later
+
+    @classmethod
+    def init_favourites(cls, force=False):
+        if cls.init_system_state():
+            return
+        
+        if not cls._should_refresh(cls.favourite_data_grabbed_at, force=force):
+            return
+        
+        print("REFRESH: favourites")
+
+        # favourites
+        try:
+            favourites = AppStore._load_all().get("favourites")
+            if isinstance(favourites, list):
+                cls.favourite_players = favourites
+            cls.favourite_standings = cls.leaderboard_service.get_favourite_standings(cls.favourite_players) if cls.favourite_players else None
+            cls.favourite_data_grabbed_at = datetime.now()
+        except Exception:
+            cls.favourite_data_grabbed_at = datetime.now()
+            cls.favourite_players = None
+            cls.favourite_standings = None
+            
+'''

@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton, 
     QFileDialog, 
-    QMessageBox
+    QMessageBox,
+    QApplication
 )
 
 from PyQt6.QtCore import Qt
@@ -156,9 +157,11 @@ This app was developed soley by Fararjeh. You can learn more about the developer
 
         # assign avatar
         try:
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             Session.auth_base.assign_avatar(file_path)
             Session.avatar_cache.pop(self.my_user_id, None)
             self._refresh_avatar()
+            QApplication.restoreOverrideCursor()
 
             msg = QMessageBox(self)
             msg.setWindowTitle("Change Avatar")

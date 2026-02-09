@@ -6,8 +6,8 @@ from PyQt6.QtGui import QKeySequence, QShortcut, QPalette
 
 from PyQt6.QtCore import Qt, QTimer
 
+from app.client.views.global_view import GlobalView
 from app.services.auth_store import AuthStore
-from app.services.app_store import AppStore
 from app.services.auth_service import AuthService
 
 from app.client.widgets.blue_screen import BlueScreen
@@ -18,9 +18,8 @@ from app.client.views.login_view import LoginView
 from app.client.views.signup_view import SignupView
 from app.client.views.home_view import HomeView
 from app.client.views.league_view import LeagueView
-from app.client.views.team_view import TeamView
-from app.client.views.player_view import PlayerView
 from app.client.views.leaderboard_view import LeaderboardView
+from app.client.views.player_view import PlayerView
 
 class FantasyApp(QMainWindow):
     '''
@@ -52,6 +51,8 @@ class FantasyApp(QMainWindow):
             self.home_view = None
             self.league_view = None
             self.leaderboard_view = None
+            self.players_view = None
+            self.globals_view = None
             self.events_view = None
             self.trades_view = None
 
@@ -82,7 +83,6 @@ class FantasyApp(QMainWindow):
         except Exception as e:
             # clears cached session if failed to login
             AuthStore.clear()
-            AppStore.clear()
             return False
     
 
@@ -141,6 +141,30 @@ class FantasyApp(QMainWindow):
         finally:
             QApplication.restoreOverrideCursor()
 
+    def show_players_view(self):
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            if self.players_view is None:
+                self.players_view = PlayerView(app=self)
+                self.stack.addWidget(self.players_view)
+            self.stack.setCurrentWidget(self.players_view)
+            self.refresh_timer.stop()
+            self.refresh_timer.start()
+        finally:
+            QApplication.restoreOverrideCursor()
+
+    def show_globals_view(self):
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            if self.globals_view is None:
+                self.globals_view = GlobalView(app=self)
+                self.stack.addWidget(self.globals_view)
+            self.stack.setCurrentWidget(self.globals_view)
+            self.refresh_timer.stop()
+            self.refresh_timer.start()
+        finally:
+            QApplication.restoreOverrideCursor()
+
     def show_events_view(self):
         print("Events view requested.")
 
@@ -160,10 +184,17 @@ class FantasyApp(QMainWindow):
         # reset session
         Session.reset()
         AuthStore.clear()
-        AppStore.clear()
 
         # safely remove old views
-        for view in [self.league_view, self.home_view, self.leaderboard_view, self.events_view, self.trades_view]:
+        for view in [
+            self.league_view, 
+            self.home_view, 
+            self.leaderboard_view, 
+            self.players_view, 
+            self.globals_view,
+            self.events_view, 
+            self.trades_view
+            ]:
             if view is not None:
                 view.hide()
                 view.setParent(None)
@@ -172,6 +203,8 @@ class FantasyApp(QMainWindow):
         self.home_view = None
         self.league_view = None
         self.leaderboard_view = None
+        self.players_view = None
+        self.globals_view = None
         self.events_view = None
         self.trades_view = None
 
