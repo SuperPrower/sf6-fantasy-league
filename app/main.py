@@ -1,25 +1,21 @@
 import sys
 import traceback
-
 from pathlib import Path
 
+from PyQt6.QtCore import QLockFile
+from PyQt6.QtGui import QFont, QFontDatabase, QIcon, QPalette
 from PyQt6.QtWidgets import QApplication
 
-from PyQt6.QtGui import QIcon, QPalette, QFontDatabase, QFont
-
-from PyQt6.QtCore import QLockFile
-
 from app.client.app import FantasyApp
-
 from app.client.theme import *
-
+from app.client.controllers.resource_path import ResourcePath
 
 APP_NAME = "SF6FantasyLeague"
 
-def main():
-    appdata_dir = Path.home() / "AppData" / "Roaming" / APP_NAME
-    appdata_dir.mkdir(parents=True, exist_ok=True)
+appdata_dir = Path.home() / "AppData" / "Roaming" / APP_NAME
+appdata_dir.mkdir(parents=True, exist_ok=True)
 
+def main():
     # creating lock file to prevent multiple applications
     lock_file_path = appdata_dir / "app.lock"
     lock = QLockFile(str(lock_file_path))
@@ -39,19 +35,13 @@ def main():
     window = FantasyApp()
     window.show()
 
-    app.setWindowIcon(
-        QIcon(
-            str(_resource_path("app/client/assets/icons/logo.ico"))
-        )
-    )
+    app.setWindowIcon(QIcon(str(ResourcePath.ICONS / "logo.ico")))
+    window.setWindowIcon(QIcon(str(ResourcePath.ICONS / "logo.ico")))
 
-    window.setWindowIcon(
-        QIcon(
-            str(_resource_path("app/client/assets/icons/logo.ico"))
-        )
-    )
-
-    sys.exit(app.exec())
+    try:
+        sys.exit(app.exec())
+    except Exception as e:
+        print(f"Failed to launch app: {e}")
 
 def _excepthook(exc_type, exc, tb):
     error_text = "".join(traceback.format_exception(exc_type, exc, tb))
@@ -63,7 +53,6 @@ def _excepthook(exc_type, exc, tb):
             break
 
 def _setup_theme(app):
-
     try:
         # apply global palette
         palette = app.palette()
@@ -80,39 +69,22 @@ def _setup_theme(app):
         palette.setColor(QPalette.ColorRole.Highlight, HIGHLIGHT_COLOR)
         palette.setColor(QPalette.ColorRole.HighlightedText, HIGHLIGHTED_TEXT_COLOR)
         app.setPalette(palette)
-
     except Exception as e:
-        print("Failed to load theme:", e)
+        print(f"Failed to load theme: {e}")
 
     try:
-        regular_id = QFontDatabase.addApplicationFont(
-            str(_resource_path("app/client/assets/fonts/centurygothic.ttf"))
-        )
-        bold_id = QFontDatabase.addApplicationFont(
-            str(_resource_path("app/client/assets/fonts/centurygothic_bold.ttf"))
-        )
+        regular_id = QFontDatabase.addApplicationFont(str(ResourcePath.FONTS / "centurygothic.ttf"))
+        bold_id = QFontDatabase.addApplicationFont(str(ResourcePath.FONTS / "centurygothic_bold.ttf"))
 
         if regular_id == -1 or bold_id == -1:
             raise Exception("One of the fonts failed to load.")
 
         regular_family = QFontDatabase.applicationFontFamilies(regular_id)[0]
-
-        # manually include bold font
         bold_font = QFont(QFontDatabase.applicationFontFamilies(bold_id)[0], 12)
         bold_font.setBold(True)
-
-        # set the default app font to regular
         app.setFont(QFont(regular_family, 12))
-
-        print(f"Loaded font family: {regular_family}")
-
-    except Exception as e:
-        print("Failed to load font:", e)
-
-def _resource_path(relative_path: str) -> str:
-    if hasattr(sys, "_MEIPASS"):
-        return str(Path(sys._MEIPASS) / relative_path)
-    return str(Path(relative_path).resolve())
+    except Exception:
+        print(f"Failed to load font: {e}")
 
 if __name__ == "__main__":
     main()

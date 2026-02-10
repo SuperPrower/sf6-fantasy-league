@@ -1,10 +1,9 @@
+from datetime import datetime, timedelta
 from packaging import version
 
-from datetime import datetime, timedelta
-
+from app.services.league_service import LeagueService
 from app.services.leaderboard_service import LeaderboardService
 from app.services.team_service import TeamService
-from app.services.league_service import LeagueService
 
 class Session:
     '''
@@ -86,7 +85,6 @@ class Session:
             or cls.system_state_grabbed_at <= current_time - timedelta(minutes=5)
         ):
             return cls.blocking_state
-        print("REFRESH: system_state")
         # system state info
         try:
             system_state = cls.auth_base.get_system_state()
@@ -105,6 +103,7 @@ class Session:
                 cls.warning_message = f"Unsupported Version, please download the latest version ({server_version}) from the GitHub page: https://github.com/bfararjeh/sf6-fantasy-league/releases"
 
             cls.player_scores = cls.leaderboard_service.get_players()
+            cls.global_stats = cls.leaderboard_service.get_global_stats()
 
             return cls.blocking_state
 
@@ -121,8 +120,6 @@ class Session:
         
         if not cls._should_refresh(cls.league_data_grabbed_at, force=force):
             return
-        
-        print("REFRESH: league_data")
 
         # league data
         try:
@@ -162,7 +159,6 @@ class Session:
         # team data
         try:
             team_data = cls.team_service.get_full_team_info() or None
-            cls.team_data_grabbed_at = datetime.now()
 
             cls.current_team_id = team_data["team_id"] or None
             cls.current_team_name = team_data["team_name"] or None
@@ -180,14 +176,6 @@ class Session:
 
         if not cls._should_refresh(cls.leaguemate_data_grabbed_at, force=force):
             return
-        
-        print("REFRESH: leaderboards")
-
-        try:
-            if cls.global_stats == None:
-                cls.global_stats = cls.leaderboard_service.get_global_stats()
-        except:
-            cls.global_stats = None
 
         try:
             cls.leaguemate_standings = cls.leaderboard_service.get_leaguemate_standings()
@@ -195,6 +183,19 @@ class Session:
         except Exception:
             cls.leaguemate_standings = None
             cls.leaguemate_data_grabbed_at = None
+    
+    @classmethod
+    def init_global_stats(cls, force=False):
+        if cls.init_system_state():
+            return
+        
+        try:
+            if cls.global_stats == None or force == True:
+                cls.global_stats = cls.leaderboard_service.get_global_stats()
+
+        except:
+            cls.global_stats = None
+
 
     @classmethod
     def init_avatar(cls, user_id):
@@ -220,10 +221,10 @@ class Session:
         if force or grabbed_at is None:
             return True
         
-        if not cls.is_league_locked and cls.current_league_id:
+        if not bool(cls.is_league_locked) and bool(cls.current_league_id):
+            seconds = 90
+        elif bool(cls.is_league_locked) and not bool(cls.draft_complete):
             seconds = 30
-        elif cls.is_league_locked and not cls.draft_complete:
-            seconds = 10
         else:
             seconds = 900
 
@@ -281,30 +282,3 @@ class Session:
         cls.system_state_grabbed_at = None
         cls.league_data_grabbed_at = None
         cls.leaguemate_data_grabbed_at = None
-
-'''
-deprecated functionality. maybe later
-
-    @classmethod
-    def init_favourites(cls, force=False):
-        if cls.init_system_state():
-            return
-        
-        if not cls._should_refresh(cls.favourite_data_grabbed_at, force=force):
-            return
-        
-        print("REFRESH: favourites")
-
-        # favourites
-        try:
-            favourites = AppStore._load_all().get("favourites")
-            if isinstance(favourites, list):
-                cls.favourite_players = favourites
-            cls.favourite_standings = cls.leaderboard_service.get_favourite_standings(cls.favourite_players) if cls.favourite_players else None
-            cls.favourite_data_grabbed_at = datetime.now()
-        except Exception:
-            cls.favourite_data_grabbed_at = datetime.now()
-            cls.favourite_players = None
-            cls.favourite_standings = None
-            
-'''

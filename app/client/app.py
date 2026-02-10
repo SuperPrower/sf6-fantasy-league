@@ -57,7 +57,7 @@ class FantasyApp(QMainWindow):
             self.trades_view = None
 
             self.refresh_timer = QTimer()
-            self.refresh_timer.setInterval(10 * 1000)
+            self.refresh_timer.setInterval(60 * 1000)
             self.refresh_timer.timeout.connect(self._refresh_current_view)
             self.refresh_timer.start()
 
@@ -86,6 +86,7 @@ class FantasyApp(QMainWindow):
             return False
     
 
+# -- LOGIN/SIGNUP VIEWS --
     def show_login_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
@@ -107,6 +108,7 @@ class FantasyApp(QMainWindow):
             QApplication.restoreOverrideCursor()
 
 
+# -- MAIN VIEWS --
     def show_home_view(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
@@ -171,7 +173,7 @@ class FantasyApp(QMainWindow):
     def show_trades_view(self):
         print("Trades view requested.")
 
-
+# -- HEADER HELPERS --
     def open_help(self):
         webbrowser.open(
             "https://github.com/bfararjeh/sf6-fantasy-league/blob/main/README.md#faqs"
@@ -210,10 +212,10 @@ class FantasyApp(QMainWindow):
 
         self.show_login_view()
     
+# -- AUTO REFRESH CONTROL --
     def _refresh_current_view(self):
         try:
             current_view = self.stack.currentWidget()
-            print(f"ATTEMPTING REFRESH ON {type(current_view).__name__}")
             current_view._refresh()
         except Exception as e:
             print(e)

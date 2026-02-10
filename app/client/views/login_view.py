@@ -1,21 +1,16 @@
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
+    QApplication,
     QLabel,
     QLineEdit,
     QPushButton,
-    QApplication
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import (
-    Qt, 
-    QTimer,
-    QSize)
 
 from app.client.controllers.session import Session
-from app.services.auth_store import AuthStore
 from app.services.auth_service import AuthService
-
+from app.services.auth_store import AuthStore
 
 class LoginView(QWidget):
     def __init__(self, app=None):
@@ -35,8 +30,7 @@ class LoginView(QWidget):
                 font-size: 28px;
                 font-weight: bold;
             }
-            """
-        )
+        """)
 
         # footer
         footer = QLabel("© 2026 Fararjeh, All rights reserved.")
@@ -83,8 +77,7 @@ class LoginView(QWidget):
         self.submit_button.setFixedHeight(40)
         self.submit_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.submit_button.clicked.connect(self._attempt_login)
-        self.submit_button.setStyleSheet(
-            """
+        self.submit_button.setStyleSheet("""
             QPushButton {
                 font-size: 14px;
                 font-weight: bold;
@@ -98,21 +91,18 @@ class LoginView(QWidget):
             QPushButton:pressed {
                 background-color: #3900d5;
             }
-            """
-        )
+        """)
 
         # status label
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet(
-            """
+        self.status_label.setStyleSheet("""
             QLabel {
                 font-size: 12px;
-                color: #cc0000;
+                color: #FFD700;
             }
-            """
-        )
+        """)
 
         # form container for width control
         form_layout = QVBoxLayout()
@@ -136,7 +126,7 @@ class LoginView(QWidget):
 
         self.setLayout(root_layout)
 
-    def _set_inputs_enabled(self, enabled: bool):
+    def _toggle_inputs(self, enabled: bool):
         self.email_input.setEnabled(enabled)
         self.password_input.setEnabled(enabled)
         self.submit_button.setEnabled(enabled)
@@ -149,7 +139,13 @@ class LoginView(QWidget):
         '''
         email = self.email_input.text()
         password = self.password_input.text()
-        self._set_inputs_enabled(False)
+
+        if not email or not password:
+            self.status_label.setText(f"Please enter your login details.")
+            self.status_label.setStyleSheet("color: #FFD700;")
+            return
+
+        self._toggle_inputs(False)
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         
         self.status_label.setText("Logging in...")
@@ -177,14 +173,16 @@ class LoginView(QWidget):
 
         except Exception as e:
             self.status_label.setText(f"Login failed: {e}")
-            self.status_label.setStyleSheet("color: #cc0000;")
-            self._set_inputs_enabled(True)
+            self.status_label.setStyleSheet("color: #FFD700;")
+        
+        finally:
+            self._toggle_inputs(True)
             QApplication.restoreOverrideCursor()
 
     def _login_success(self):
         self.status_label.setText("")
         self.email_input.setText("")
         self.password_input.setText("")
-        self._set_inputs_enabled(True)
+        self._toggle_inputs(True)
 
         self.app.show_home_view()

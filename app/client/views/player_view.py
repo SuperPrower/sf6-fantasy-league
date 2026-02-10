@@ -1,31 +1,23 @@
-from pathlib import Path
-import sys
-
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
-    QWidget, 
-    QLabel,
-    QVBoxLayout, 
-    QHBoxLayout,
+    QApplication,
     QFrame,
-    QSizePolicy,
-    QScrollArea,
+    QHBoxLayout,
+    QLabel,
     QPushButton,
-    QApplication
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
-from PyQt6.QtCore import Qt
-
-from PyQt6.QtGui import QPixmap
-
+from app.client.controllers.resource_path import ResourcePath
 from app.client.controllers.session import Session
-
-from app.client.widgets.header_bar import HeaderBar
-from app.client.widgets.footer_nav import FooterNav
-
 from app.client.theme import *
+from app.client.widgets.footer_nav import FooterNav
+from app.client.widgets.header_bar import HeaderBar
 
 class PlayerView(QWidget):
-
     def __init__(self, app):
         super().__init__()
         self.app = app
@@ -51,11 +43,7 @@ class PlayerView(QWidget):
             "points": "Sort: Points",
         }
 
-        self.PLAYER_IMG_DIR = Path(self._resource_path("app/client/assets/player_pictures"))
-        self.REGION_ICO_DIR = Path(self._resource_path("app/client/assets/icons/flags"))
-
         self._build_main()
-
 
     def _build_main(self):
         self.root_layout.addWidget(HeaderBar(self.app))
@@ -180,11 +168,11 @@ class PlayerView(QWidget):
             image.setStyleSheet("border: 3px solid #BBBBBB;")
             image.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            img_path = self.PLAYER_IMG_DIR / f"{player["name"]}.jpg"
+            img_path = ResourcePath.PLAYERS / f"{player['name']}.jpg"
 
             pixmap = QPixmap(str(img_path))
             if pixmap.isNull():
-                pixmap = QPixmap(str(self.PLAYER_IMG_DIR / "placeholder.png"))
+                pixmap = QPixmap(str(ResourcePath.PLAYERS / "placeholder.png"))
 
             image.setPixmap(
                 pixmap.scaled(
@@ -194,9 +182,9 @@ class PlayerView(QWidget):
                 )
             )
 
-            img_path = self.REGION_ICO_DIR / f"{player["region"]}.png"
+            img_path = ResourcePath.FLAGS / f"{player["region"]}.png"
             if not img_path.exists():
-                img_path = self.REGION_ICO_DIR / "placeholder.png"
+                img_path = ResourcePath.FLAGS / "placeholder.png"
 
             info_label = QLabel()
             info_label.setTextFormat(Qt.TextFormat.RichText)
@@ -206,7 +194,7 @@ class PlayerView(QWidget):
                 f"<span style='font-size:16px; color:#BBBBBB;'>{region}  </span>"
                 f"<img src='{img_path}' width='18' height='12'><br/><br/>"
                 f"<span style='font-size:16px; font-weight:bold;;'>{points}  </span>"
-                "</div"
+                "</div>"
             )
             info_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
@@ -248,9 +236,3 @@ class PlayerView(QWidget):
         self._rebuild_players_view(sort_by=self.current_sort)
 
         QApplication.restoreOverrideCursor()
-
-
-    def _resource_path(self, relative_path: str) -> str:
-        if hasattr(sys, "_MEIPASS"):
-            return str(Path(sys._MEIPASS) / relative_path)
-        return str(Path(relative_path).resolve())

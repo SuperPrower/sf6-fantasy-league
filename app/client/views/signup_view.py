@@ -1,18 +1,14 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QApplication,
     QLabel,
     QLineEdit,
     QPushButton,
-    QApplication,
-    QToolButton
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
-
-from PyQt6.QtGui import QIcon
 
 from app.services.signup_service import SignupService
-
 
 class SignupView(QWidget):
     def __init__(self, app=None):

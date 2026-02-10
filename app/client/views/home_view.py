@@ -1,41 +1,32 @@
-from pathlib import Path
-import sys
-
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
-    QWidget, 
-    QVBoxLayout,
+    QApplication,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
-    QPushButton, 
-    QFileDialog, 
     QMessageBox,
-    QApplication
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
-from PyQt6.QtCore import Qt
-
-from PyQt6.QtGui import QPixmap
-
-from app.client.widgets.header_bar import HeaderBar
-from app.client.widgets.footer_nav import FooterNav
-
+from app.client.controllers.resource_path import ResourcePath
 from app.client.controllers.session import Session
-
 from app.client.theme import *
-
+from app.client.widgets.footer_nav import FooterNav
+from app.client.widgets.header_bar import HeaderBar
 
 class HomeView(QWidget):
     def __init__(self, app):
         super().__init__()
         self.app = app
-
-        self.AVATAR_IMG_PATH = Path(self._resource_path("app/client/assets/avatars"))
+        
         self.my_username = Session.user
         self.my_user_id = Session.user_id
 
         self._build_static()
 
-    
     def _build_static(self):
         self.root_layout = QVBoxLayout()
         self.root_layout.setContentsMargins(0,0,0,0)
@@ -55,8 +46,11 @@ class HomeView(QWidget):
         self._build_sections()
     
     def _build_sections(self):
-        self.content_layout.addWidget(self._build_welcome())
-        self.content_layout.addWidget(self._build_home_yap())
+        if not Session.blocking_state:
+            self.content_layout.addWidget(self._build_welcome())
+            self.content_layout.addWidget(self._build_home_yap())
+        else:
+            self.content_layout.addWidget(self._build_blocked())
 
 
 # -- BUILDERS --
@@ -135,6 +129,22 @@ This app was developed soley by Fararjeh. You can learn more about the developer
 
         return cont
 
+    def _build_blocked(self):
+        cont = QWidget()
+        layout = QVBoxLayout(cont)
+        layout.setContentsMargins(25,0,25,0)
+
+        main = QLabel("""
+It's quiet. Too quiet...
+""")
+        main.setWordWrap(True)
+        main.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        layout.addStretch()
+        layout.addWidget(main)
+
+        return cont
+
 
 # -- BUTTON METHODS --
 
@@ -188,10 +198,10 @@ This app was developed soley by Fararjeh. You can learn more about the developer
         try:
             avatar.loadFromData(Session.init_avatar(self.my_user_id))
             if avatar.isNull():
-                avatar = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
+                avatar = QPixmap(str(ResourcePath.AVATAR / "placeholder.png"))
 
         except Exception:
-            avatar = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
+            avatar = QPixmap(str(ResourcePath.AVATAR / "placeholder.png"))
 
         image.setPixmap(
             avatar.scaled(
@@ -208,10 +218,10 @@ This app was developed soley by Fararjeh. You can learn more about the developer
             pixmap = QPixmap()
             pixmap.loadFromData(Session.init_avatar(self.my_user_id))
             if pixmap.isNull():
-                pixmap = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
+                pixmap = QPixmap(str(ResourcePath.AVATAR / "placeholder.png"))
 
         except Exception as e:
-            pixmap = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
+            pixmap = QPixmap(str(ResourcePath.AVATAR / "placeholder.png"))
 
         self.avatar_label.setPixmap(
             pixmap.scaled(
@@ -220,8 +230,3 @@ This app was developed soley by Fararjeh. You can learn more about the developer
                 Qt.TransformationMode.SmoothTransformation
             )
         )
-
-    def _resource_path(self, relative_path: str) -> str:
-        if hasattr(sys, "_MEIPASS"):
-            return str(Path(sys._MEIPASS) / relative_path)
-        return str(Path(relative_path).resolve())

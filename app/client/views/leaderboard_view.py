@@ -1,45 +1,29 @@
-from pathlib import Path
-
-from functools import partial
-import sys
-import uuid
-
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtWidgets import (
-    QWidget, 
-    QLabel, 
-    QPushButton, 
-    QVBoxLayout, 
-    QHBoxLayout, 
-    QLineEdit,
-    QGroupBox,
     QFrame,
-    QSizePolicy,
+    QHBoxLayout,
+    QLabel,
+    QGraphicsDropShadowEffect,
+    QPushButton,
     QScrollArea,
-    QSpacerItem
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout,
+    QWidget,
 )
 
-from PyQt6.QtCore import Qt, QSize
-
-from PyQt6.QtGui import QPixmap
-
+from app.client.controllers.resource_path import ResourcePath
 from app.client.controllers.session import Session
-
-from PyQt6.QtWidgets import QGraphicsDropShadowEffect
-from PyQt6.QtGui import QColor
-
-from app.client.widgets.header_bar import HeaderBar
-from app.client.widgets.footer_nav import FooterNav
-
 from app.client.theme import *
+from app.client.widgets.footer_nav import FooterNav
+from app.client.widgets.header_bar import HeaderBar
 
 class LeaderboardView(QWidget):
-
     def __init__(self, app):
         super().__init__()
         self.app = app
 
-        self.PLAYER_IMG_DIR = Path(self._resource_path("app/client/assets/player_pictures"))
-        self.AVATAR_IMG_PATH = Path(self._resource_path("app/client/assets/avatars"))
         self.RANK_STYLES = {
             1: "#FFD700",
             2: "#C0C0C0",
@@ -65,6 +49,7 @@ class LeaderboardView(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         scroll.setStyleSheet(SCROLL_STYLESHEET)
 
         self.content_widget = QWidget()
@@ -171,61 +156,52 @@ class LeaderboardView(QWidget):
         layout.setSpacing(5)
 
         image = QLabel()
-        image.setFixedSize(QSize(150,150))
-        image.setStyleSheet("border: 2px solid #BBBBBB;")
+        image.setFixedSize(QSize(150, 150))
         image.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
-        player_name = player["player_name"]
-        img_path = self.PLAYER_IMG_DIR / f"{player_name}.jpg"
-
-        pixmap = QPixmap(str(img_path))
-        if pixmap.isNull():
-            pixmap = QPixmap(str(self.PLAYER_IMG_DIR / "placeholder.png"))
-
-        image.setPixmap(
-            pixmap.scaled(
-                150, 150,
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            )
-        )
-
-        name = QLabel(player_name)
+        name = QLabel()
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name.setStyleSheet("""
             font-size: 16px; 
             font-weight: bold;
         """)
 
-        layout.addWidget(image)
-        layout.addWidget(name)
+        if player:
+            # --- Player present ---
+            player_name = player.get("player_name", "-")
+            img_path = ResourcePath.PLAYERS / f"{player_name}.jpg"
 
-        return slot
+            pixmap = QPixmap(str(img_path))
+            if pixmap.isNull():
+                pixmap = QPixmap(str(ResourcePath.PLAYERS / "placeholder.png"))
 
-    def _build_empty_player_slot(self):
-        slot = QWidget()
-        layout = QVBoxLayout(slot)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(5)
+            image.setPixmap(
+                pixmap.scaled(
+                    150, 150,
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+            )
 
-        image = QLabel()
-        image.setFixedSize(150, 150)
-        image.setStyleSheet("""
-            border: 2px dashed #555;
-            background-color: #333;
-            color: #eee;
-        """)
-        image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image.setText("?")
+            name.setText(player_name)
+            image.setStyleSheet("border: 2px solid #BBBBBB;")
 
-        name = QLabel("-")
-        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name.setStyleSheet("""
-            font-size: 16px; 
-            font-weight: bold; 
-            color: #999; 
-        """)
+        else:
+            # --- Empty slot ---
+            image.setStyleSheet("""
+                border: 2px dashed #555;
+                background-color: #333;
+                color: #eee;
+            """)
+            image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            image.setText("?")
 
+            name.setText("-")
+            name.setStyleSheet("""
+                font-size: 16px; 
+                font-weight: bold; 
+                color: #999; 
+            """)
 
         layout.addWidget(image)
         layout.addWidget(name)
@@ -308,7 +284,7 @@ class LeaderboardView(QWidget):
             if i < len(players):
                 slot = self._build_player_slot(players[i])
             else:
-                slot = self._build_empty_player_slot()
+                slot = self._build_player_slot({})
 
             player_row.addWidget(slot, stretch=1)
 
@@ -324,10 +300,10 @@ class LeaderboardView(QWidget):
         try:
             avatar.loadFromData(Session.init_avatar(user_id))
             if avatar.isNull():
-                avatar = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
+                avatar = QPixmap(str(ResourcePath.AVATAR / "placeholder.png"))
 
         except Exception:
-            avatar = QPixmap(str(self.AVATAR_IMG_PATH / "placeholder.png"))
+            avatar = QPixmap(str(ResourcePath.AVATAR / "placeholder.png"))
 
         image.setPixmap(
             avatar.scaled(
@@ -349,7 +325,6 @@ class LeaderboardView(QWidget):
         self.my_username = Session.user
         self.my_user_id = Session.user_id
         self.leaguemate_data = Session.leaguemate_standings
-        self.my_league = Session.current_league_name
 
         self._update_view()
 
@@ -357,10 +332,11 @@ class LeaderboardView(QWidget):
         self._update_leaguemates()
 
     def _update_leaguemates(self):
-        for i in reversed(range(self.leaguemate_layout.count())):
-            widget = self.leaguemate_layout.itemAt(i).widget()
+        while self.leaguemate_layout.count():
+            item = self.leaguemate_layout.takeAt(0)
+            widget = item.widget()
             if widget:
-                widget.setParent(None)
+                widget.deleteLater()
 
         if self.leaguemate_data:
             self.leaguemate_container.setVisible(True)
@@ -378,7 +354,9 @@ class LeaderboardView(QWidget):
                 self.leaguemate_layout.addWidget(team_widget)
 
         else:
-            self.leaguemate_container.setVisible(False)
+            label = QLabel("It's quiet. Too quiet...\n\nMaybe join a league?")
+            self.leaguemate_layout.addSpacerItem(QSpacerItem(10,100))
+            self.leaguemate_layout.addWidget(label, alignment= Qt.AlignmentFlag.AlignVCenter)
 
     def _create_separator(self):
         separator = QFrame()
@@ -392,15 +370,6 @@ class LeaderboardView(QWidget):
         )
         return separator
 
-    def _set_status(self, msg, code=0):
-        colors = {0: "#333", 1: "#2e7d32", 2: "#cc0000"}
-        self.status_label.setStyleSheet(f"color: {colors.get(code, '#333')};")
-        self.status_label.setText(msg)
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        self._refresh()
-
     def _apply_ranks(self, teams):
         ranked = []
 
@@ -408,7 +377,7 @@ class LeaderboardView(QWidget):
         last_rank = 0
 
         for i, team in enumerate(teams):
-            pts = team["total_points"]
+            pts = team.get("total_points", 0)
 
             if pts == last_points:
                 rank = last_rank
@@ -423,7 +392,6 @@ class LeaderboardView(QWidget):
 
         return ranked
 
-    def _resource_path(self, relative_path: str) -> str:
-        if hasattr(sys, "_MEIPASS"):
-            return str(Path(sys._MEIPASS) / relative_path)
-        return str(Path(relative_path).resolve())
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refresh()

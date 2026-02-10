@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon
 
 from app.client.controllers.session import Session
+from app.client.controllers.resource_path import ResourcePath
 from app.client.widgets.refresh_button import RefreshButton
 
 from app.client.theme import *
@@ -52,14 +53,16 @@ class HeaderBar(QWidget):
         help_button.setCursor(Qt.CursorShape.PointingHandCursor)
         help_button.clicked.connect(self.app.open_help)
         help_button.setStyleSheet(BUTTON_STYLESHEET_B)
-        help_button.setIcon(QIcon(self._resource_path("app/client/assets/icons/help.svg")))
+        icon = ResourcePath.ICONS / "help.svg"
+        help_button.setIcon(QIcon(str(icon)))
         help_button.setIconSize(QSize(32, 32))
 
         logout_button = QPushButton()
         logout_button.setCursor(Qt.CursorShape.PointingHandCursor)
         logout_button.clicked.connect(self.app.logout)
         logout_button.setStyleSheet(BUTTON_STYLESHEET_C)
-        logout_button.setIcon(QIcon(self._resource_path("app/client/assets/icons/logout.svg")))
+        icon = ResourcePath.ICONS / "logout.svg"
+        logout_button.setIcon(QIcon(str(icon)))
         logout_button.setIconSize(QSize(32, 32))
 
         self.refresh_button = RefreshButton()
@@ -67,8 +70,3 @@ class HeaderBar(QWidget):
         layout.addWidget(self.refresh_button)
         layout.addWidget(help_button)
         layout.addWidget(logout_button)
-
-    def _resource_path(self, relative_path: str) -> str:
-        if hasattr(sys, "_MEIPASS"):
-            return str(Path(sys._MEIPASS) / relative_path)
-        return str(Path(relative_path).resolve())

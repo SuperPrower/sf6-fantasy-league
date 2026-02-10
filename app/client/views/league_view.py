@@ -1,6 +1,4 @@
-import sys
 from datetime import datetime
-from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QFontMetrics, QPixmap
@@ -19,21 +17,17 @@ from PyQt6.QtWidgets import (
     QMessageBox
 )
 
+from app.client.controllers.resource_path import ResourcePath
 from app.client.controllers.session import Session
 from app.client.controllers.async_runner import run_async
 from app.client.widgets.header_bar import HeaderBar
 from app.client.widgets.footer_nav import FooterNav
 from app.client.theme import *
 
-
 class LeagueView(QWidget):
-
     def __init__(self, app):
         super().__init__()
         self.app = app
-
-        self.PLAYER_IMG_DIR = Path(self._resource_path("app/client/assets/player_pictures"))
-        self.REGION_ICO_DIR = Path(self._resource_path("app/client/assets/icons/flags"))
 
         # build ui then update
         self._build_static()
@@ -548,48 +542,42 @@ class LeagueView(QWidget):
     def _build_player_slot(self, player: dict):
         slot = QWidget()
         layout = QVBoxLayout(slot)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        layout.setSpacing(5)
 
         image = QLabel()
-        image.setStyleSheet("border: 2px solid #FFFFFF;")
-        image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image.setCursor(Qt.CursorShape.PointingHandCursor)
+        image.setFixedSize(QSize(75, 75))
+        image.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
-        player_name = player["id"]
-        img_path = self.PLAYER_IMG_DIR / f"{player_name}.jpg"
+        if player:
+            # --- Player present ---
+            player_name = player.get("id", "-")
+            img_path = ResourcePath.PLAYERS / f"{player_name}.jpg"
 
-        pixmap = QPixmap(str(img_path))
-        if pixmap.isNull():
-            pixmap = QPixmap(str(self.PLAYER_IMG_DIR / "placeholder.png"))
+            pixmap = QPixmap(str(img_path))
+            if pixmap.isNull():
+                pixmap = QPixmap(str(ResourcePath.PLAYERS / "placeholder.png"))
 
-        image.setPixmap(
-            pixmap.scaled(
-                75, 75,
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
+            image.setPixmap(
+                pixmap.scaled(
+                    75, 75,
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
             )
-        )
 
-        layout.addWidget(image)
+            image.setStyleSheet("border: 2px solid #BBBBBB;")
+            image.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        return slot
-
-    def _build_empty_player_slot(self):
-        slot = QWidget()
-        layout = QVBoxLayout(slot)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(8)
-
-        image = QLabel()
-        image.setFixedSize(75, 75)
-        image.setStyleSheet("""
-            border: 2px dashed #555;
-            background-color: #333;
-            color: #eee;
-        """)
-        image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image.setText("?")
+        else:
+            # --- Empty slot ---
+            image.setStyleSheet("""
+                border: 2px dashed #555;
+                background-color: #333;
+                color: #eee;
+            """)
+            image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            image.setText("?")
 
         layout.addWidget(image)
 
@@ -638,15 +626,15 @@ class LeagueView(QWidget):
         image.setStyleSheet("border: 2px solid #FFFFFF;")
         image.setFixedSize(QSize(200, 200))
         image.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        img_path = self.PLAYER_IMG_DIR / f"{name}.jpg"
+        img_path = ResourcePath.PLAYERS / f"{name}.jpg"
         if not img_path.exists():
-            img_path = self.PLAYER_IMG_DIR / "placeholder.png"
+            img_path = ResourcePath.PLAYERS / "placeholder.png"
         pixmap = QPixmap(str(img_path)).scaled(200, 200, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
         image.setPixmap(pixmap)
 
-        region_img = self.REGION_ICO_DIR / f"{region}.png"
+        region_img = ResourcePath.FLAGS / f"{region}.png"
         if not region_img.exists():
-            region_img = self.REGION_ICO_DIR / "placeholder.png"
+            region_img = ResourcePath.FLAGS / "placeholder.png"
 
         info_label = QLabel()
         info_label.setText(
@@ -654,7 +642,7 @@ class LeagueView(QWidget):
             f"<span style='font-size:20px; font-weight: bold;;'>{name}</span><br/>"
             f"<span style='font-size:16px; color:#BBBBBB;'>{region}  </span>"
             f"<img src='{region_img}' width='18' height='12'><br/>"
-            "</div"
+            "</div>"
         )
         info_label.setTextFormat(Qt.TextFormat.RichText)
         info_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
@@ -742,6 +730,22 @@ class LeagueView(QWidget):
             self._set_status(f"Failed to leave league: {error}", code=2)
 
         self._set_status("Leaving League...")
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Leave League")
+        msg.setStyleSheet("background: #10194D;")
+        msg.setText("Are you sure you would like to leave your league?")
+        msg.setIcon(QMessageBox.Icon.Warning)
+
+        ok_btn = msg.addButton("Leave", QMessageBox.ButtonRole.AcceptRole)
+        cancel_btn = msg.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+
+        msg.exec()
+
+        if msg.clickedButton() != ok_btn:
+            self._set_status("Leave cancelled.", 2)
+            return
+        
         run_async(
             parent_widget= self.league_widget,
             fn=Session.league_service.leave_league,
@@ -978,7 +982,10 @@ class LeagueView(QWidget):
             self.team_overview.setVisible(False)
 
         self.draft_picker.setVisible(
-            bool(self.my_team_name) and not self.is_draft_complete and (self.my_username == self.my_next_pick or self.my_user_id == self.my_next_pick) and self.is_league_locked
+            bool(self.my_team_name) and 
+            not self.is_draft_complete and 
+            (self.my_username == self.my_next_pick) and 
+            self.is_league_locked
         )
 
         self._fit_text_to_width(label=self.team_name_label, text=self.my_team_name, max_width=400)
@@ -994,14 +1001,14 @@ class LeagueView(QWidget):
                 widget.setParent(None)
 
         self.player_buttons = []
-
+        
         for i in range(5):
             if i < len(players):
                 slot = self._build_player_slot(players[i])
                 slot.mousePressEvent = lambda e, p=players[i]: self._update_player_stat(p)
                 self.player_buttons.append(slot)
             else:
-                slot = self._build_empty_player_slot()
+                slot = self._build_player_slot({})
             self.team_bar_layout.addWidget(slot, stretch=1)
 
     def _set_status(self, msg, code=0):
@@ -1057,11 +1064,6 @@ class LeagueView(QWidget):
         font.setPointSize(best_size)
         label.setFont(font)
         label.setText(text)
-
-    def _resource_path(self, relative_path: str) -> str:
-        if hasattr(sys, "_MEIPASS"):
-            return str(Path(sys._MEIPASS) / relative_path)
-        return str(Path(relative_path).resolve())
 
     def showEvent(self, event):
         super().showEvent(event)
